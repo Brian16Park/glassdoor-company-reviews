@@ -1,0 +1,31 @@
+## LaTeX
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+*.thm
+*.pre
+*.bcf
+*.xml
+
+
+## R 
+.Rhistory    
+.RData         
+.Rdevice         
+.Rapp.history
+
+## RStudio 
+.Rproj.user/    
+*.Rproj          
+
+
+
+## OS trasn
+.DS_Store
+Thumbs.db
