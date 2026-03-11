@@ -24,7 +24,18 @@
 .Rproj.user/    
 *.Rproj          
 
+# virtual environments
+venv/
+.venv/
+env/
+ENV/
 
+# environment variables
+.env
+*.env
+
+## jupyter
+.ipynb_checkpoints/
 
 ## OS trasn
 .DS_Store
