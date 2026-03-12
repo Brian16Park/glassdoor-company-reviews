@@ -1,22 +1,32 @@
+---
+title: "AMS597 Project Data Cleaning"
+author: "Group 1"
+date: "2026-03-12"
+output: 
+  pdf_document:
+    number_sections: true
+---
 
+# Read Data
 ```{r}
-df <- read.csv("glassdoor-companies-reviews.csv")
-
+df <- read.csv("data/processed/chatgpt_glassdoor_reviews_with_sector_revised.csv")
 head(df)
-
 ```
 
 
-
+# Missing
 ```{r}
-apply(is.na(df), 2, sum)
+source("src/utils/data_helpers.R")
 
-# Missing Check Function
-Missing.Check.By.Column <- function(df){
-  return (apply(is.na(df), 2, sum))
-}
-
+Missing.Check.By.Column(df)
 ```
+
+
+# Process Employee Status
+
+If ```employee_length``` is missing, then delete it. (4 rows)
+
+If is current employee, then use rating_year instead of end_year to minus employee_length to calculate the start_year. After this step we make sure all missing of end_year are currently employees.
 
 ```{r}
 
@@ -40,10 +50,12 @@ df$employee_job_start_year <- ifelse(
   df$rating_year - df$employee_length # Current: use the year of rating
 )
 
-lengthvars <- c("employee_job_start_year", "final_end_year", "employee_job_quit", "employee_length", "employee_type")
+lengthvars <- c("employee_job_start_year", "employee_job_end_year", "employee_job_quit", "employee_length", "employee_type")
 print(df[, lengthvars])
 
 # is there anyone quit job without giving end year? no
 # all missing of employee_job_end_year due to not quit job
 df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
+
+Missing.Check.By.Column(df)
 ```
