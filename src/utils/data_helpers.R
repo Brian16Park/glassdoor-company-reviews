@@ -1,4 +1,10 @@
 # Missing Check Function
-Missing.Check.By.Column <- function(df){
-  return (apply(is.na(df), 2, sum))
+Missing.Check.By.Column <- function(df) {
+  sapply(df, function(x) {
+    if (is.character(x)) {
+      sum(is.na(x) | trimws(x) == "")
+    } else {
+      sum(is.na(x))
+    }
+  })
 }
