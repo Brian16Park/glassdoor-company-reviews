@@ -1,0 +1,49 @@
+
+```{r}
+df <- read.csv("glassdoor-companies-reviews.csv")
+
+head(df)
+
+```
+
+
+
+```{r}
+apply(is.na(df), 2, sum)
+
+# Missing Check Function
+Missing.Check.By.Column <- function(df){
+  return (apply(is.na(df), 2, sum))
+}
+
+```
+
+```{r}
+
+library(tidyverse)
+library(lubridate)
+
+df <- df %>% 
+  drop_na(employee_length)
+
+df$rating_year = as.numeric(sub("[^0-9]*(\\d{4}).*", "\\1", df$rating_date))
+
+df[is.na(df$employee_type), "employee_type"] <- "Former"
+# fill it as Former since they're all 
+# todo  make it better: check whether endyear exists
+
+df$employee_job_quit <- ifelse(grepl("^Former", df$employee_type, ignore.case = TRUE),TRUE, FALSE)
+
+df$employee_job_start_year <- ifelse(
+  df$employee_job_quit,
+  df$employee_job_end_year - df$employee_length, # Former use the year quit
+  df$rating_year - df$employee_length # Current: use the year of rating
+)
+
+lengthvars <- c("employee_job_start_year", "final_end_year", "employee_job_quit", "employee_length", "employee_type")
+print(df[, lengthvars])
+
+# is there anyone quit job without giving end year? no
+# all missing of employee_job_end_year due to not quit job
+df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
+```
