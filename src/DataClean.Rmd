@@ -9,6 +9,7 @@ output:
 
 # Read Data
 ```{r}
+setwd("~/glassdoor-company-reviews-ams")
 df <- read.csv("data/processed/chatgpt_glassdoor_reviews_with_sector_revised.csv")
 head(df)
 ```
@@ -16,8 +17,8 @@ head(df)
 
 # Missing
 ```{r}
+setwd("~/glassdoor-company-reviews-ams")
 source("src/utils/data_helpers.R")
-
 Missing.Check.By.Column(df)
 ```
 

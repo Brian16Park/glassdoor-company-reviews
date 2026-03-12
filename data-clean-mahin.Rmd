@@ -1,30 +1,67 @@
 ---
-title: "data_cleaning"
-author: "Mahin Roddur"
+title: "AMS597 Project Data Cleaning"
+author: "Group 1"
 date: "2026-03-12"
-output: pdf_document
+output: 
+  pdf_document:
+    number_sections: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Read Data
+```{r}
+setwd("~/glassdoor-company-reviews-ams")
+df <- read.csv("data/processed/chatgpt_glassdoor_reviews_with_sector_revised.csv")
+head(df)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+# Missing
+```{r}
+setwd("~/glassdoor-company-reviews-ams")
+source("src/utils/data_helpers.R")
+Missing.Check.By.Column(df)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+# Process Employee Status
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+If ```employee_length``` is missing, then delete it. (4 rows)
+
+If is current employee, then use rating_year instead of end_year to minus employee_length to calculate the start_year. After this step we make sure all missing of end_year are currently employees.
+
+```{r}
+
+library(tidyverse)
+library(lubridate)
+
+df <- df %>% 
+  drop_na(employee_length)
+
+df$rating_year = as.numeric(sub("[^0-9]*(\\d{4}).*", "\\1", df$rating_date))
+
+df[is.na(df$employee_type), "employee_type"] <- "Former"
+# fill it as Former since they're all 
+# todo  make it better: check whether endyear exists
+
+df$employee_job_quit <- ifelse(grepl("^Former", df$employee_type, ignore.case = TRUE),TRUE, FALSE)
+
+df$employee_job_start_year <- ifelse(
+  df$employee_job_quit,
+  df$employee_job_end_year - df$employee_length, # Former use the year quit
+  df$rating_year - df$employee_length # Current: use the year of rating
+)
+
+lengthvars <- c("employee_job_start_year", "employee_job_end_year", "employee_job_quit", "employee_length", "employee_type")
+print(df[, lengthvars])
+
+# is there anyone quit job without giving end year? no
+# all missing of employee_job_end_year due to not quit job
+df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
+
+Missing.Check.By.Column(df)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+
+```
