@@ -40,3 +40,4 @@ ENV/
 ## OS trasn
 .DS_Store
 Thumbs.db
+.Rproj.user
