@@ -1,5 +1,4 @@
 ---
-<<<<<<< HEAD
 title: "AMS597 Project Data Cleaning"
 author: "Group 1"
 date: "2026-03-12"
@@ -8,19 +7,40 @@ output:
     number_sections: true
 ---
 
+```{r}
+pkg_needed <- c("tidyverse", 
+                "lubridate", 
+                "ggplot2",
+                "ggcorrplot",
+                "here",
+                "corrplot")
+for (p in pkg_needed) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
+```
+
+
 # Read Data
 ```{r}
-setwd("~/glassdoor-company-reviews-ams")
-df <- read.csv("data/processed/chatgpt_glassdoor_reviews_with_sector_revised.csv")
+library(here)
+df <- read.csv(
+  here("data", "processed", "chatgpt_glassdoor_reviews_with_sector_revised.csv")
+)
 head(df)
 ```
 
 
 # Missing
 ```{r}
-setwd("~/glassdoor-company-reviews-ams")
 source("src/utils/data_helpers.R")
-Missing.Check.By.Column(df)
+
+#Trimming whitespace in empty cells first
+df <- Clean.Whitespace.NA(df)
+
+Missing.Summary(df)
 ```
 
 
@@ -59,41 +79,85 @@ print(df[, lengthvars])
 # all missing of employee_job_end_year due to not quit job
 df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
 
-Missing.Check.By.Column(df)
-```
 
+```
+## Default missing count_helpful and count_unhelpful values to 0, get net_vote
 
 ```{r}
-
-```
-=======
-title: "data_cleaning"
-author: "Mahin Roddur"
-date: "2026-03-12"
-output: pdf_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+df <- df %>%
+  mutate(
+    count_helpful   = coalesce(count_helpful, 0),
+    count_unhelpful = coalesce(count_unhelpful, 0),
+    net_vote = count_helpful - count_unhelpful,
+    flag_covid = coalesce(as.logical(flag_covid), FALSE)
+  )
+Missing.Summary(df)
 ```
 
-## R Markdown
+## Missingness Correlation Matrix
+```{r}
+missing_matrix <- is.na(df)
+missing_matrix <- missing_matrix * 1 #coerces boolean to numeric T = 1, F = 0
+missing_matrix <- missing_matrix[, colSums(missing_matrix) > 0] #filter out columns with no missing 
+cor_matrix <- cor(missing_matrix)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+library(ggcorrplot)
+ggcorrplot(cor_matrix, tl.srt = 90, tl.cex = 8)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+library(corrplot)
+corrplot(cor_matrix, method = "color", tl.cex = 0.6)
 
-```{r cars}
-summary(cars)
+```
+```{r}
+cor_long <- as.data.frame(as.table(cor_matrix))
+
+cor_long <- cor_long[cor_long$Var1 != cor_long$Var2, ] # avoids listing same variables
+cor_long <- cor_long %>%arrange(desc(abs(Freq)))%>%filter(!is.na(Freq)) #sorts descending, filters out NA correlation 
+
+cor_long
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+## Removing Columns
+```{r}
+cols_to_remove <- c("employee_responses", 
+                    "flag_featured",
+                    "glassdoor_employer_id",
+                    "url",
+                    "original_url",
+                    "overview_url",
+                    "review_url",
+                    "overview_id",
+                    "count_helpful",
+                    "count_unhelpful",
+                    "glassdoor_employer_id",
+                    "timestamp"
+                    )
+newdf <-Remove.Columns(df, cols_to_remove)
+names(newdf)
+Missing.Summary(newdf)
+```
+## Recorrelate
+```{r}
+missing_matrix2 <- is.na(newdf)
+missing_matrix2 <- missing_matrix2 * 1 #coerces boolean to numeric T = 1, F = 0
+missing_matrix2 <- missing_matrix2[, colSums(missing_matrix2) > 0] #filter out columns with no missing 
+cor_matrix2 <- cor(missing_matrix2)
+cor_new <- as.data.frame(as.table(cor_matrix2))
+
+cor_new <- cor_new[cor_new$Var1 != cor_new$Var2, ] # avoids listing same variables
+cor_new <- cor_new %>%arrange(desc(abs(Freq)))%>%filter(!is.na(Freq)) #sorts descending, filters out NA correlation 
+
+cor_new
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
->>>>>>> 3de594dbf8c8aafbe0bf294e6b9fefe82c570100
+```{r}
+# write to csv
+write.csv(
+  newdf,
+  here("data", "processed", "data_cleaned_mahin-ver.csv"),
+  row.names = FALSE
+)
+```
+
