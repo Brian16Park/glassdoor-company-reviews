@@ -12,9 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(MASS)
 library(tidyverse)
-#install.packages("lattice")
+install.packages("lattice")
+library(lattice)
 library(caret)
-#install.packages("Matrix")
+install.packages("Matrix")
 library(Matrix)
 library(glmnet)
 library(mlbench)
@@ -23,7 +24,7 @@ library(caret)
 
 #Import the dataset
 ```{r}
-df <- read_csv("chatgpt_glassdoor_reviews_with_sector_revised.csv")
+df <- read.csv("data/company_tagger/chatgpt_glassdoor_reviews_with_sector_revised.csv")
 view(df)
 summary(df)
 ```
@@ -71,7 +72,7 @@ df$helpfulness_score
 df$advice_to_management[is.na(df$advice_to_management)] <- "No"
 ```
 
-# For rating_diversity_inclusion, fill missing value using the mode within the same company. If the company has only one review (or no mode available), then fill with the mode of the sector.
+# For rating_diversity_inclusion, fill missing value using the MEDIAN within the same company. If the company has only one review (or no median available), then fill with the median of the sector.
 ```{r}
 # Step 1 — Define Median Safely (Handle All-NA Case)
 safe_median <- function(x) {
@@ -465,7 +466,7 @@ exp(coef(model_logit))
 ```
 Interpretation:
 
-A one-point increase in overall rating makes employees 2.76 times more likely to recommend the company.
+A one-point increase in overall rating makes employees 2.32 times more likely to recommend the company.
 
 # Step 5: Predict on test data
 ```{r}
@@ -518,7 +519,7 @@ best_f1 <- max(f1_results$F1)
 best_threshold
 best_f1
 ```
-Threshold of 0.4 produces the highest F1 score of 0.8760331
+Threshold of 0.4 produces the highest F1 score of 0.833
 
 # Evaluate different classification thresholds to select the best one using Precision scores
 ```{r}
@@ -644,6 +645,9 @@ tree_test <- tree_data[-tree_train_index, ]
 
 # Step 5 — Train the Decision Tree
 ```{r}
+install.packages("rpart")
+library(rpart)
+
 tree_model <- rpart(
   flags_recommend_frend ~ .,
   data = tree_train,
@@ -651,6 +655,9 @@ tree_model <- rpart(
 )
 
 # Visualize the tree
+install.packages("rpart.plot")
+library(rpart.plot)
+
 rpart.plot(tree_model)
 ```
 Observations: 
@@ -764,7 +771,7 @@ Same AUC + accuracy means:
 
 # Step 1: Import Random Forest package
 ```{r}
-#install.packages("randomForest")
+install.packages("randomForest")
 library(randomForest)
 ```
 
@@ -813,7 +820,7 @@ rf_train <- rf_data[rf_train_index, ]
 rf_test  <- rf_data[-rf_train_index, ]
 ```
 
-# Step 5: 5. Fit the random forest model
+# Step 5: Fit the random forest model
 ```{r}
 set.seed(123)
 
@@ -855,7 +862,7 @@ rf_cm
 # Accuracy
 rf_cm$overall["Accuracy"]
 ```
-Observation: The random forest model achieved slightly lower accuracy (90.21%) compared to logistic regression (92.27%) and decision tree (91.75%). This suggests that the underlying relationship between predictors and the target variable is relatively simple and dominated by a strong predictor—overall rating. As a result, more complex models such as random forests do not provide additional predictive power and may even introduce slight variability due to random feature selection. This indicates that simpler models are sufficient to capture the structure of the data.
+Observation: The random forest model achieved slightly lower accuracy compared to logistic regression and decision tree. This suggests that the underlying relationship between predictors and the target variable is relatively simple and dominated by a strong predictor—overall rating. As a result, more complex models such as random forests do not provide additional predictive power and may even introduce slight variability due to random feature selection. This indicates that simpler models are sufficient to capture the structure of the data.
 
 # Step 9: Compute F1 score
 ```{r}
