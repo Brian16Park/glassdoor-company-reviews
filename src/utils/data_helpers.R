@@ -24,6 +24,7 @@ Missing.Summary <- function(df) {
   data.frame(
     column = names(missing_counts_sorted),
     missing = missing_counts_sorted,
+    percent = round(missing_counts_sorted / nrow(df) * 100, 2),
     row.names = NULL
   )
 }

@@ -39,8 +39,8 @@ source("src/utils/data_helpers.R")
 
 #Trimming whitespace in empty cells first
 df <- Clean.Whitespace.NA(df)
-
 Missing.Summary(df)
+nrow(df)
 ```
 
 
@@ -54,6 +54,9 @@ If is current employee, then use rating_year instead of end_year to minus employ
 
 library(tidyverse)
 library(lubridate)
+
+dropped_employee_length <- df %>% select(everything()) %>% filter(is.na(employee_length))
+dropped_employee_length
 
 df <- df %>% 
   drop_na(employee_length)
@@ -92,6 +95,7 @@ df <- df %>%
     flag_covid = coalesce(as.logical(flag_covid), FALSE)
   )
 Missing.Summary(df)
+nrow(df)
 ```
 
 ## Missingness Correlation Matrix
@@ -149,6 +153,9 @@ cor_new <- as.data.frame(as.table(cor_matrix2))
 cor_new <- cor_new[cor_new$Var1 != cor_new$Var2, ] # avoids listing same variables
 cor_new <- cor_new %>%arrange(desc(abs(Freq)))%>%filter(!is.na(Freq)) #sorts descending, filters out NA correlation 
 
+library(ggcorrplot)
+ggcorrplot(cor_matrix2, tl.srt = 90, tl.cex = 8)
+
 cor_new
 ```
 
@@ -160,4 +167,6 @@ write.csv(
   row.names = FALSE
 )
 ```
+
+
 
