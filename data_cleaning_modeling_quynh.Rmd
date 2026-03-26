@@ -16,7 +16,7 @@ install.packages("lattice")
 library(lattice)
 library(caret)
 install.packages("Matrix")
-library(Matrix)
+#library(Matrix)
 library(glmnet)
 library(mlbench)
 library(caret)
@@ -80,6 +80,9 @@ safe_median <- function(x) {
   return(median(x, na.rm = TRUE))
 }
 
+sum(is.na(df$rating_diversity_inclusion))
+old_df <- df %>% select(company_name, rating_diversity_inclusion)%>%filter(is.na(rating_diversity_inclusion))%>%arrange(company_name)
+old_df
 # Step 2 — Company-Level Median Imputation
 library(dplyr)
 
@@ -108,6 +111,9 @@ df <- df %>%
 
 # Step 4 — Final Check
 sum(is.na(df$rating_diversity_inclusion)) # passed!
+
+# df <- df %>% select(company_name, rating_diversity_inclusion)
+# df
 ```
 
 
@@ -229,6 +235,7 @@ ggplot(df, aes(employee_status, rating_overall)) +
 ```
 
 # Scatterplot with Trend Line of Rating Overall: 
+
 ```{r}
 ggplot(df, aes(x = rating_date_clean, y = rating_overall)) +
   geom_point(alpha = 0.3, color = "steelblue") +
@@ -238,6 +245,8 @@ ggplot(df, aes(x = rating_date_clean, y = rating_overall)) +
     x = "Review Date",
     y = "Overall Rating"
   )
+
+# another plot for after 2020
 ```
 ```{r}
 df$year <- format(df$rating_date_clean, "%Y")
@@ -256,6 +265,8 @@ ggplot(yearly_avg, aes(x = year, y = avg_rating, group = 1)) +
     x = "Year",
     y = "Average Overall Rating"
   )
+
+# Another graph for after 2020, and for number of ratings per year 
 ```
 Observations from the line graph: average employee ratings decline from ~2015–2018 and then rise starting around 2019. 
 Some plausible explanations: 
