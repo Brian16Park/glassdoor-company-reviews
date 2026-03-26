@@ -13,7 +13,7 @@ pkg_needed <- c("tidyverse",
                 "ggplot2",
                 "ggcorrplot",
                 "here",
-                "naniar")
+                "corrplot")
 for (p in pkg_needed) {
   if (!requireNamespace(p, quietly = TRUE)) {
     install.packages(p)
@@ -38,9 +38,9 @@ head(df)
 source("src/utils/data_helpers.R")
 
 #Trimming whitespace in empty cells first
-Clean.Whitespace.NA(df)
+df <- Clean.Whitespace.NA(df)
 
-Missing.Check.By.Column(df)
+Missing.Summary(df)
 ```
 
 
@@ -79,7 +79,7 @@ print(df[, lengthvars])
 # all missing of employee_job_end_year due to not quit job
 df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
 
-sort(Missing.Check.By.Column(df), descending = T)
+
 ```
 ## Default missing count_helpful and count_unhelpful values to 0, get net_vote
 
@@ -91,17 +91,30 @@ df <- df %>%
     net_vote = count_helpful - count_unhelpful,
     flag_covid = coalesce(as.logical(flag_covid), FALSE)
   )
-Missing.
+Missing.Summary(df)
 ```
 
 ## Missingness Correlation Matrix
 ```{r}
-
+missing_matrix <- is.na(df)
+missing_matrix <- missing_matrix * 1 #coerces boolean to numeric T = 1, F = 0
+missing_matrix <- missing_matrix[, colSums(missing_matrix) > 0] #filter out columns with no missing 
+cor_matrix <- cor(missing_matrix)
 
 library(ggcorrplot)
+ggcorrplot(cor_matrix, tl.srt = 90, tl.cex = 8)
 
-ggcorrplot(cor_matrix)
+library(corrplot)
+corrplot(cor_matrix, method = "color", tl.cex = 0.6)
 
+```
+```{r}
+cor_long <- as.data.frame(as.table(cor_matrix))
+
+cor_long <- cor_long[cor_long$Var1 != cor_long$Var2, ] # avoids listing same variables
+cor_long <- cor_long %>%arrange(desc(abs(Freq)))%>%filter(!is.na(Freq)) #sorts descending, filters out NA correlation 
+
+cor_long
 ```
 
 
@@ -111,9 +124,40 @@ ggcorrplot(cor_matrix)
 cols_to_remove <- c("employee_responses", 
                     "flag_featured",
                     "glassdoor_employer_id",
-                    "url",,
-                    "original url",
-                    
+                    "url",
+                    "original_url",
+                    "overview_url",
+                    "review_url",
+                    "overview_id",
+                    "count_helpful",
+                    "count_unhelpful",
+                    "glassdoor_employer_id",
+                    "timestamp"
                     )
+newdf <-Remove.Columns(df, cols_to_remove)
+names(newdf)
+Missing.Summary(newdf)
+```
+## Recorrelate
+```{r}
+missing_matrix2 <- is.na(newdf)
+missing_matrix2 <- missing_matrix2 * 1 #coerces boolean to numeric T = 1, F = 0
+missing_matrix2 <- missing_matrix2[, colSums(missing_matrix2) > 0] #filter out columns with no missing 
+cor_matrix2 <- cor(missing_matrix2)
+cor_new <- as.data.frame(as.table(cor_matrix2))
+
+cor_new <- cor_new[cor_new$Var1 != cor_new$Var2, ] # avoids listing same variables
+cor_new <- cor_new %>%arrange(desc(abs(Freq)))%>%filter(!is.na(Freq)) #sorts descending, filters out NA correlation 
+
+cor_new
+```
+
+```{r}
+# write to csv
+write.csv(
+  newdf,
+  here("data", "processed", "data_cleaned_mahin-ver.csv"),
+  row.names = FALSE
+)
 ```
 
