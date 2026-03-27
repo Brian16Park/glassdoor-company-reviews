@@ -60,3 +60,13 @@ df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
 
 Missing.Check.By.Column(df)
 ```
+
+
+
+# Save to a Cleaned Dataset
+
+
+```{r}
+write.csv(df, "data/processed/glassdoor_reviews_cleaned.csv")
+
+```
