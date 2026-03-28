@@ -7,4 +7,21 @@ output:
     number_sections: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Libraries
+```{r}
+library(dplyr)
+library(stringr)
+library(lubridate)
+```
+
+```{r}
+df <- read.csv("data/processed/glassdoor_reviews_with_sector_revised.csv")
+str(df)
+dim(df)
+colSums(is.na(df))
+```
 
