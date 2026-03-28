@@ -1,0 +1,899 @@
+---
+title: "Dataset_demo"
+author: "Quynh Tran"
+date: "2026-02-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Import libraries
+```{r}
+library(MASS)
+library(tidyverse)
+install.packages("lattice")
+library(lattice)
+library(caret)
+install.packages("Matrix")
+#library(Matrix)
+library(glmnet)
+library(mlbench)
+library(caret)
+```
+
+#Import the dataset
+```{r}
+df <- read.csv("data/company_tagger/chatgpt_glassdoor_reviews_with_sector_revised.csv")
+view(df)
+summary(df)
+```
+
+# EDA: 
+
+# Some EDA
+```{r}
+#install.packages("skimr")
+#library(skimr)
+#skim(df)
+```
+
+```{r}
+#install.packages("DataExplorer")
+#library(DataExplorer)
+#DataExplorer::create_report(df)
+```
+
+# Data Cleaning:
+
+# Create a column for employee_type1 that identifies whether an employee if former or current, based on column employee_type, by extracting the first two words from employee_type
+```{r}
+df$employee_type1 <- sapply(strsplit(df$employee_type, " "), `[`, 1)
+#df$employee_type1
+```
+
+# For column count_helpful and count_unhelpful, replace missing values (NA) in count_helpful and count_unhelpful with 0
+```{r}
+df$count_helpful[is.na(df$count_helpful)] <- 0
+df$count_unhelpful[is.na(df$count_unhelpful)] <- 0
+
+# check if these columns still have any missing values
+colSums(is.na(df[, c("count_helpful", "count_unhelpful")]))
+```
+
+# Create a new column called helpfulness score that stores the difference between count_helpful and count_unhelpful
+```{r}
+df$helpfulness_score <- df$count_helpful - df$count_unhelpful
+df$helpfulness_score
+```
+
+# Replace missing values (NA) in the advice_to_management column with "No"
+```{r}
+df$advice_to_management[is.na(df$advice_to_management)] <- "No"
+```
+
+# For rating_diversity_inclusion, fill missing value using the MEDIAN within the same company. If the company has only one review (or no median available), then fill with the median of the sector.
+```{r}
+# Step 1 — Define Median Safely (Handle All-NA Case)
+safe_median <- function(x) {
+  if (all(is.na(x))) return(NA)
+  return(median(x, na.rm = TRUE))
+}
+
+sum(is.na(df$rating_diversity_inclusion))
+old_df <- df %>% select(company_name, rating_diversity_inclusion)%>%filter(is.na(rating_diversity_inclusion))%>%arrange(company_name)
+old_df
+# Step 2 — Company-Level Median Imputation
+library(dplyr)
+
+df <- df %>%
+  group_by(company_name) %>%
+  mutate(
+    rating_diversity_inclusion = ifelse(
+      is.na(rating_diversity_inclusion),
+      safe_median(rating_diversity_inclusion),
+      rating_diversity_inclusion
+    )
+  ) %>%
+  ungroup()
+
+# Step 3 — Sector-Level Fallback
+df <- df %>%
+  group_by(sector) %>%
+  mutate(
+    rating_diversity_inclusion = ifelse(
+      is.na(rating_diversity_inclusion),
+      safe_median(rating_diversity_inclusion),
+      rating_diversity_inclusion
+    )
+  ) %>%
+  ungroup()
+
+# Step 4 — Final Check
+sum(is.na(df$rating_diversity_inclusion)) # passed!
+
+# df <- df %>% select(company_name, rating_diversity_inclusion)
+# df
+```
+
+
+# Remove certain columns that do not serve the analysis: overview_id, review_id, review_url, url, overview_url, original_url, flag_covid, review_advice, flag_featured: 
+```{r}
+df <- subset(df, select = -c(timestamp, overview_id, review_id, review_url, url, overview_url, original_url, employee_type, employee_responses, flag_covid, review_advice, flag_featured))
+head(df)
+```
+
+# Create useful variables: 
+# Positive vs. Negative reviews: 
+```{r}
+df$sentiment <- ifelse(df$rating_overall >= 4, "positive",
+                 ifelse(df$rating_overall <= 2, "negative", "neutral"))
+
+head(df)
+```
+
+# Convert categorical variables:
+In R, categorical variables should usually be converted to factors because factors tell R that the variable represents categories, not numeric values or free text. This affects how models, summaries, and plots treat the variable.
+```{r}
+# Employee-related categories
+df$employee_status <- as.factor(df$employee_status)
+df$employee_type1 <- as.factor(df$employee_type1)
+df$employee_job_title <- as.factor(df$employee_job_title)
+df$employee_location <- as.factor(df$employee_location)
+
+# Recommendation / Flags
+df$flags_recommend_frend <- as.factor(df$flags_recommend_frend)
+df$flags_ceo_approval <- as.factor(df$flags_ceo_approval)
+df$flags_business_outlook <- as.factor(df$flags_business_outlook)
+
+# Company / Industry Variables
+df$company_name <- as.factor(df$company_name)
+df$sector <- as.factor(df$sector)
+
+# Sentiment
+df$sentiment <- as.factor(df$sentiment)
+```
+
+```{r}
+str(df)
+```
+
+# Descriptive Statistics: 
+```{r}
+summary(df$rating_overall)
+summary(df$rating_work_life)
+summary(df$rating_culture_values)
+summary(df$rating_career_opportunities)
+summary(df$rating_compensation_benefits)
+summary(df$rating_diversity_inclusion)
+summary(df$rating_senior_leadership)
+```
+
+```{r}
+mean(df$rating_overall)
+sd(df$rating_overall)
+```
+
+# For rating_date column, extract the first 10 characters and convert them to date format: 
+```{r}
+# Step 1: Inspect the column first
+sum(is.na(df$rating_date))
+sum(df$rating_date == "", na.rm = TRUE)
+head(df$rating_date)
+unique(df$rating_date)[1:10]
+
+# Step 2: Convert to character first, then extract the date:
+df$rating_date_clean <- gsub('"', "", as.character(df$rating_date))
+df$rating_date_clean <- as.Date(substr(df$rating_date_clean, 1, 10), format = "%Y-%m-%d")
+
+# Step 3: Verify
+str(df$rating_date_clean)
+head(df$rating_date_clean)
+```
+
+
+# Data Viz:
+
+# Histogram on distribution of rating_overall:
+```{r}
+library(ggplot2)
+
+ggplot(df, aes(rating_overall)) +
+  geom_histogram(binwidth=1, fill="steelblue")
+```
+
+# Heatmap on relationships between rating categories
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+
+ratings <- df[, c(
+  "rating_overall",
+  "rating_work_life",
+  "rating_culture_values",
+  "rating_compensation_benefits",
+  "rating_senior_leadership",
+  "rating_career_opportunities"
+)]
+
+corr_matrix <- cor(ratings, use = "complete.obs")
+
+corrplot(corr_matrix,
+         method = "color",
+         col = colorRampPalette(c("white", "red"))(200),
+         type = "upper",
+         addCoef.col = "black",
+         tl.col = "black",
+         tl.srt = 45)
+```
+Rating_overall is most correlated with Rating_culture_values, Rating_senior_leadership, and Rating_career_opportunities, and least correlated with Rating_work_life and Rating_compensation_benefits. 
+
+# Boxplot on Ratings by Employee Status
+```{r}
+ggplot(df, aes(employee_status, rating_overall)) +
+  geom_boxplot()
+```
+
+# Scatterplot with Trend Line of Rating Overall: 
+
+```{r}
+ggplot(df, aes(x = rating_date_clean, y = rating_overall)) +
+  geom_point(alpha = 0.3, color = "steelblue") +
+  geom_smooth(method = "loess", color = "red") +
+  labs(
+    title = "Overall Rating Over Time",
+    x = "Review Date",
+    y = "Overall Rating"
+  )
+
+# another plot for after 2020
+```
+```{r}
+df$year <- format(df$rating_date_clean, "%Y")
+
+library(dplyr)
+
+yearly_avg <- df %>%
+  group_by(year) %>%
+  summarise(avg_rating = mean(rating_overall, na.rm = TRUE))
+
+ggplot(yearly_avg, aes(x = year, y = avg_rating, group = 1)) +
+  geom_line(color = "darkred") +
+  geom_point(size = 3) +
+  labs(
+    title = "Average Rating by Year",
+    x = "Year",
+    y = "Average Overall Rating"
+  )
+
+# Another graph for after 2020, and for number of ratings per year 
+```
+Observations from the line graph: average employee ratings decline from ~2015–2018 and then rise starting around 2019. 
+Some plausible explanations: 
+1️⃣ Changes in the Labor Market (Macroeconomic Effects)
+
+Employee sentiment often correlates with economic cycles.
+
+2015–2018
+
+During strong labor markets:
+
+unemployment fell steadily in many economies (e.g., U.S. unemployment dropped from ~5.3% in 2015 to ~3.9% in 2018)
+
+employees had more outside options
+
+When employees have better alternatives, they:
+
+become more critical of employers
+
+expect higher pay, benefits, flexibility
+
+So reviews may become more negative.
+
+After 2019
+
+Several factors could cause ratings to increase:
+
+companies improving benefits (remote work, flexibility)
+
+economic uncertainty making employees more appreciative of stable jobs
+
+workplace reforms
+
+This is why researchers sometimes study:
+
+“Does employee satisfaction decrease when the labor market is strong?”
+
+2️⃣ Platform / User Behavior Effects (Selection Bias)
+
+Glassdoor-type review platforms often experience changes in who leaves reviews.
+
+Possible scenarios:
+
+Early years
+
+Mostly dissatisfied employees leave reviews.
+
+Later years
+
+Companies encourage employees to leave reviews.
+
+Example:
+
+HR campaigns
+
+onboarding prompts
+
+employer branding initiatives
+
+This increases the share of positive reviews, which raises the average rating.
+
+This is a classic review selection bias.
+
+3️⃣ Changes in Company Policies
+
+Around the late 2010s many companies introduced:
+
+better work-life balance policies
+
+diversity & inclusion initiatives
+
+remote work flexibility
+
+improved benefits packages
+
+These reforms could improve employee sentiment starting around 2019.
+
+4️⃣ Generational / Cultural Changes in Workplaces
+
+Workplace expectations evolved rapidly after 2018:
+
+Examples:
+
+flexible work arrangements
+
+mental health awareness
+
+focus on culture
+
+Companies adapting to these changes may see improving ratings.
+
+# Heatmap showing patterns of average rating by sector over years
+```{r}
+# Compute the yearly average by sector
+sector_year_avg <- df %>%
+  group_by(year, sector) %>%
+  summarise(avg_rating = mean(rating_overall, na.rm = TRUE))
+
+# Heatmap
+ggplot(sector_year_avg, aes(x = year, y = sector, fill = avg_rating)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(
+    title = "Average Rating Heatmap by Sector and Year",
+    x = "Year",
+    y = "Sector"
+  ) +
+  theme_minimal()
+```
+Observations: 
+- Some sectors, such as Finance, Energy/Mining, Government, Marketing, and Construction, show higher average ratings after 2020. Possible interpretations are workplace policy improvements, remote work flexibility, and post-pandemic changes in employee expectations. 
+- Healthcare sector shows mixed trends - higher average ratings earlier from 2013 to 2015, and appears more moderate later. This could have been due to increased stress or workload in later years and workforce burnout effects for healthcare professionals post-COVID 19. 
+
+# Modeling: 
+
+# Question 1: Predict whether an employee will recommend the company to their friends
+```{r}
+unique(df$flags_recommend_frend)
+levels(df$flags_recommend_frend)
+str(df$flags_recommend_frend)
+```
+flags_recommend_frend column is a binary categorical variable, and is a factor -> ready for the modeling. 
+
+# Model 1: Logistic Regression
+
+# Step 1: check the target variable flags_recommend_frend
+```{r}
+table(df$flags_recommend_frend, useNA = "ifany")
+
+str(df$flags_recommend_frend)
+```
+confirms it is a binary classification problem, and the target variable is a factor with 2 levels "positive" and "negative". 
+
+# Step 2: Select Predictor Variables and Remove Missing Data (because logistic regression cannot handle missing data)
+
+```{r}
+sum(is.na(df$rating_culture_values))
+```
+
+```{r}
+logistic_data <- df[, c(
+"flags_recommend_frend", 
+"employee_length",
+"employee_type1",
+"flags_business_outlook",
+"flags_ceo_approval",
+"rating_overall",
+"rating_work_life",
+"rating_culture_values",
+"rating_compensation_benefits",
+"rating_senior_leadership",
+"rating_diversity_inclusion"
+)]
+
+logistic_data <- na.omit(logistic_data)
+
+dim(logistic_data)
+
+names(logistic_data)
+```
+# Step 3: Split the dataset into 80% training and 20% testing
+```{r}
+library(caret)
+
+set.seed(123)
+
+log_train_index <- createDataPartition(
+  logistic_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+log_train <- logistic_data[log_train_index, ]
+log_test <- logistic_data[-log_train_index, ]
+```
+
+# Step 4: Fit the logistic regression model
+```{r}
+model_logit <- glm(
+  flags_recommend_frend ~
+    rating_overall +
+    rating_work_life +
+    rating_culture_values +
+    rating_compensation_benefits +
+    rating_senior_leadership +
+    rating_diversity_inclusion +
+    employee_length +
+    employee_type1 +
+    flags_business_outlook +
+    flags_ceo_approval,
+  data = log_train,
+  family = binomial
+)
+
+summary(model_logit)
+```
+Interpretations of the logistic regression model summary: 
+1. Coefficients: 
+positive coefficient → increases probability of recommending
+negative coefficient → decreases probability
+
+2. p-values:
+Per the model summary, flags_business_outlookPOSITIVE, rating_overall, flags_ceo_approvalDISAPPROVE (decreases the probability an employee recommends the company), rating_work_life, rating_culture_values, flags_business_outlookNEUTRAL are statistically significant predictors for whether a person recommends a company, 5% significance level.  
+
+# Odds-ratio: 
+```{r}
+exp(coef(model_logit))
+```
+Interpretation:
+
+A one-point increase in overall rating makes employees 2.32 times more likely to recommend the company.
+
+# Step 5: Predict on test data
+```{r}
+log_pred_prob <- predict(model_logit, log_test, type = "response")
+log_pred_prob
+```
+These are probabilities of recommending the company. 
+
+# Step 6: Evaluate different classification thresholds to select the best one using F1 scores
+```{r}
+# Step 6.1: Create a Sequence of Thresholds
+thresholds <- seq(0.1, 1.0, by = 0.1)
+
+# Step 6.2: Define a function to calculate F1 score
+f1_score <- function(actual, predicted) {
+
+  tp <- sum(actual == "POSITIVE" & predicted == "POSITIVE")
+  fp <- sum(actual == "NEGATIVE" & predicted == "POSITIVE")
+  fn <- sum(actual == "POSITIVE" & predicted == "NEGATIVE")
+
+  precision <- ifelse((tp + fp) == 0, 0, tp / (tp + fp))
+  recall <- ifelse((tp + fn) == 0, 0, tp / (tp + fn))
+
+  if (precision + recall == 0) return(0)
+
+  f1 <- 2 * precision * recall / (precision + recall)
+
+  return(f1)
+}
+
+# Step 6.3: Loop Through Thresholds
+f1_results <- data.frame(threshold = thresholds, F1 = NA)
+
+for (i in seq_along(thresholds)) {
+  
+  t <- thresholds[i]
+  
+  pred_class <- ifelse(log_pred_prob > t, "POSITIVE", "NEGATIVE")
+  
+  f1_results$F1[i] <- f1_score(log_test$flags_recommend_frend, pred_class)
+}
+
+# Step 6.4: Print F1 scores
+print(f1_results)
+
+# Step 6.5: Choose the threshold with the best F1 score
+best_threshold <- f1_results$threshold[which.max(f1_results$F1)]
+best_f1 <- max(f1_results$F1)
+
+best_threshold
+best_f1
+```
+Threshold of 0.4 produces the highest F1 score of 0.833
+
+# Evaluate different classification thresholds to select the best one using Precision scores
+```{r}
+# Step 6.1: Create a Sequence of Thresholds
+thresholds <- seq(0.1, 1.0, by = 0.1)
+
+# Step 6.2: Define a function to calculate Precision
+precision_score <- function(actual, predicted) {
+
+  tp <- sum(actual == "POSITIVE" & predicted == "POSITIVE")
+  fp <- sum(actual == "NEGATIVE" & predicted == "POSITIVE")
+  fn <- sum(actual == "POSITIVE" & predicted == "NEGATIVE")
+
+  precision <- ifelse((tp + fp) == 0, 0, tp / (tp + fp))
+
+  return(precision)
+}
+
+# Step 6.3: Loop Through Thresholds
+precision_results <- data.frame(threshold = thresholds, precision = NA)
+
+for (i in seq_along(thresholds)) {
+  
+  t <- thresholds[i]
+  
+  pred_class <- ifelse(log_pred_prob > t, "POSITIVE", "NEGATIVE")
+  
+  precision_results$precision[i] <- precision_score(log_test$flags_recommend_frend, pred_class)
+}
+
+# Step 6.4: Print Precision scores
+print(precision_results)
+
+# Step 6.5: Choose the threshold with the best precision score
+best_threshold_precision <- precision_results$threshold[which.max(precision_results$precision)]
+best_precision <- max(precision_results$precision)
+
+best_threshold_precision
+best_precision
+```
+
+# Step 7: Convert Probabilities to Class Predictions
+```{r}
+log_pred_class <- ifelse(log_pred_prob > 0.4, "POSITIVE", "NEGATIVE")
+
+# Convert to factor
+log_pred_class <- as.factor(log_pred_class)
+```
+
+# Step 8: Evaluate Model Performance
+```{r}
+confusionMatrix(log_pred_class, log_test$flags_recommend_frend)
+```
+```{r}
+table(df$flags_recommend_frend)
+```
+
+# Step 9: ROC Curve and AUC
+```{r}
+library(pROC)
+
+log_roc_curve <- roc(log_test$flags_recommend_frend, log_pred_prob)
+plot(log_roc_curve)
+
+auc(log_roc_curve)
+```
+
+# Model 2: Decision Tree: 
+
+# Step 1 — Load Required Packages for Decision Tree Classification
+```{r}
+#install.packages("rpart")
+#install.packages("rpart.plot")
+
+library(rpart)
+library(rpart.plot)
+```
+
+# Step 2 — Make Sure Target Variable Is a Factor
+```{r}
+df$flags_recommend_frend <- as.factor(df$flags_recommend_frend)
+
+levels(df$flags_recommend_frend)
+```
+
+# Step 3: Select Predictor Variables and Remove Missing Values
+```{r}
+tree_data <- df[, c(
+"flags_recommend_frend", 
+"employee_length",
+"employee_type1",
+"flags_business_outlook",
+"flags_ceo_approval",
+"rating_overall",
+"rating_work_life",
+"rating_culture_values",
+"rating_compensation_benefits",
+"rating_senior_leadership",
+"rating_diversity_inclusion"
+)]
+
+tree_data <- na.omit(tree_data)
+
+dim(tree_data)
+
+names(tree_data)
+```
+# Step 4 — Split Training for 80% and Test Data for 20% of the dataset
+```{r}
+library(caret)
+
+set.seed(123)
+
+tree_train_index <- createDataPartition(
+  tree_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+tree_train <- tree_data[tree_train_index, ]
+tree_test <- tree_data[-tree_train_index, ]
+```
+
+# Step 5 — Train the Decision Tree
+```{r}
+install.packages("rpart")
+library(rpart)
+
+tree_model <- rpart(
+  flags_recommend_frend ~ .,
+  data = tree_train,
+  method = "class"
+)
+
+# Visualize the tree
+install.packages("rpart.plot")
+library(rpart.plot)
+
+rpart.plot(tree_model)
+```
+Observations: 
+- rating overall and flags business outlook are the strongest variables to make good predictions.
+- Many rating variables are likely highly correlated with rating_overall, so the tree doesn’t need them.
+
+# Step 6: View Important Variables
+```{r}
+tree_model$variable.importance
+```
+# Step 8 — Make Predictions
+```{r}
+pred_tree <- predict(tree_model, tree_test, type = "class")
+```
+
+# Step 9 — Evaluate Model Performance
+```{r}
+confusionMatrix(pred_tree, tree_test$flags_recommend_frend)
+```
+
+# Step 10: ROC curve and AUC
+```{r}
+# Step 1 — Get Predicted Probabilities
+pred_prob_tree <- predict(tree_model, tree_test, type = "prob")
+head(pred_prob_tree)
+# Step 2 — Extract Positive Class Probability
+tree_prob_positive <- pred_prob_tree[, "POSITIVE"]
+# Step 3 — Compute ROC Curve
+roc_tree <- roc(tree_test$flags_recommend_frend, tree_prob_positive)
+# Step 4 — Plot ROC Curve and Compute AUC
+plot(roc_tree, col = "blue", main = "ROC Curve - Decision Tree")
+auc(roc_tree)
+```
+
+# Prune the tree: 
+```{r}
+# Check complexity parameter:
+printcp(tree_model)
+```
+```{r}
+# plot it
+plotcp(tree_model)
+```
+```{r}
+# prune the tree
+pruned_tree <- prune(tree_model, cp = 0.01)
+
+# visualize the pruned tree
+rpart.plot(pruned_tree)
+```
+```{r}
+# prediction on test data using unpruned vs pruned tree
+pred_tree_unpruned <- predict(tree_model, tree_test, type = "class")
+prob_tree_unpruned <- predict(tree_model, tree_test, type = "prob")[, "POSITIVE"]
+
+pred_tree_pruned <- predict(pruned_tree, tree_test, type = "class")
+prob_tree_pruned <- predict(pruned_tree, tree_test, type = "prob")[, "POSITIVE"]
+```
+
+```{r}
+# Confusion Matrix & Accuracy
+
+# Unpruned
+cm_unpruned <- confusionMatrix(pred_tree_unpruned, tree_test$flags_recommend_frend)
+cm_unpruned
+# Pruned
+cm_pruned <- confusionMatrix(pred_tree_pruned, tree_test$flags_recommend_frend)
+cm_pruned
+
+cm_unpruned$overall["Accuracy"]
+cm_pruned$overall["Accuracy"]
+```
+Observations: Pruned and unpruned trees produce exact same accuracy and confusion matrix. 
+
+our tree is already:
+
+shallow (only ~3 splits)
+
+using very strong predictors
+
+not capturing noise
+
+So pruning:
+
+does NOT remove much
+→ performance stays the same
+
+Key Interpretations: 
+1️⃣ No Overfitting Detected
+
+If pruning doesn’t change performance:
+
+👉 your model is already well-generalized
+
+2️⃣ Strong Signal in Data
+
+Your dataset has:
+
+rating_overall → extremely strong predictor
+
+So even a simple tree performs well.
+
+3️⃣ Model is Stable
+
+Same AUC + accuracy means:
+
+👉 predictions are consistent
+👉 model is robust
+
+# Random forest: 
+
+# Step 1: Import Random Forest package
+```{r}
+install.packages("randomForest")
+library(randomForest)
+```
+
+# Step 2: Prepare the target variable flags_recommend_frend
+```{r}
+df$flags_recommend_frend <- factor(
+  df$flags_recommend_frend,
+)
+
+str(df$flags_recommend_frend)
+```
+
+# Step 3: Create modeling dataset
+```{r}
+rf_data <- df[, c(
+"flags_recommend_frend", 
+"employee_length",
+"employee_type1",
+"flags_business_outlook",
+"flags_ceo_approval",
+"rating_overall",
+"rating_work_life",
+"rating_culture_values",
+"rating_compensation_benefits",
+"rating_senior_leadership",
+"rating_diversity_inclusion"
+)]
+
+rf_data <- na.omit(rf_data)
+
+dim(rf_data)
+
+names(rf_data)
+```
+# Step 4: Split into 80% training and 20% test sets
+```{r}
+set.seed(123)
+
+rf_train_index <- createDataPartition(
+  rf_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+rf_train <- rf_data[rf_train_index, ]
+rf_test  <- rf_data[-rf_train_index, ]
+```
+
+# Step 5: Fit the random forest model
+```{r}
+set.seed(123)
+
+rf_model <- randomForest(
+  flags_recommend_frend ~ .,
+  data = rf_train,
+  ntree = 500, # build 500 trees
+  importance = TRUE # compute variable importance
+)
+```
+
+# Step 6: Model output
+```{r}
+print(rf_model)
+```
+Hence, random forest accuracy is 100% - 10.38% = 89.62%. 
+Error rate of class NEGATIVE = 40 / (496 + 40) = 7.46%
+Error rate of class POSITIVE = 41 / (203 + 41) = 16.8%
+-> the model is better at predicting NEGATIVE class than POSITIVE class. 
+This can be due to: 
+- Class imbalance: Since there are more NEGATIVES than POSITIVES, the model learns them better. 
+Random forest's accuracy is slightly lower than one of decision tree; this is because our dataset has very simple structure, and rating_overall almost perfectly predicts all outcomes; hence, complex models generally don't improve the performance. 
+
+# Step 7: Predict on Test Data
+```{r}
+# Predicted classes
+rf_pred_class <- predict(rf_model, rf_test, type = "class")
+
+# Predicted probabilities
+rf_pred_prob <- predict(rf_model, rf_test, type = "prob")[, "POSITIVE"]
+```
+
+# Step 8: Evaluate performance
+```{r}
+# Confusion matrix
+rf_cm <- confusionMatrix(rf_pred_class, rf_test$flags_recommend_frend)
+rf_cm
+
+# Accuracy
+rf_cm$overall["Accuracy"]
+```
+Observation: The random forest model achieved slightly lower accuracy compared to logistic regression and decision tree. This suggests that the underlying relationship between predictors and the target variable is relatively simple and dominated by a strong predictor—overall rating. As a result, more complex models such as random forests do not provide additional predictive power and may even introduce slight variability due to random feature selection. This indicates that simpler models are sufficient to capture the structure of the data.
+
+# Step 9: Compute F1 score
+```{r}
+rf_f1 <- f1_score(rf_test$flags_recommend_frend, rf_pred_class)
+rf_f1
+```
+
+# Step 10: ROC curve and AUC
+```{r}
+rf_roc <- roc(rf_test$flags_recommend_frend, rf_pred_prob)
+plot(rf_roc, col = "darkgreen", main = "ROC Curve - Random Forest")
+auc(rf_roc)
+```
+# Step 11: Check variable importance
+```{r}
+importance(rf_model)
+
+# plot it
+varImpPlot(rf_model)
+```
+
+
+
