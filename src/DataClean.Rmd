@@ -7,66 +7,226 @@ output:
     number_sections: true
 ---
 
-# Read Data
-```{r}
-setwd("~/glassdoor-company-reviews-ams")
-df <- read.csv("data/processed/chatgpt_glassdoor_reviews_with_sector_revised.csv")
-head(df)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
-# Missing
+# Loading Libraries
 ```{r}
-setwd("~/glassdoor-company-reviews-ams")
-source("src/utils/data_helpers.R")
-Missing.Check.By.Column(df)
-```
-
-
-# Process Employee Status
-
-If ```employee_length``` is missing, then delete it. (4 rows)
-
-If is current employee, then use rating_year instead of end_year to minus employee_length to calculate the start_year. After this step we make sure all missing of end_year are currently employees.
-
-```{r}
-
-library(tidyverse)
+library(dplyr)
+library(stringr)
 library(lubridate)
-
-df <- df %>% 
-  drop_na(employee_length)
-
-df$rating_year = as.numeric(sub("[^0-9]*(\\d{4}).*", "\\1", df$rating_date))
-
-df[is.na(df$employee_type), "employee_type"] <- "Former"
-# fill it as Former since they're all 
-# todo  make it better: check whether endyear exists
-
-df$employee_job_quit <- ifelse(grepl("^Former", df$employee_type, ignore.case = TRUE),TRUE, FALSE)
-
-df$employee_job_start_year <- ifelse(
-  df$employee_job_quit,
-  df$employee_job_end_year - df$employee_length, # Former use the year quit
-  df$rating_year - df$employee_length # Current: use the year of rating
-)
-
-lengthvars <- c("employee_job_start_year", "employee_job_end_year", "employee_job_quit", "employee_length", "employee_type")
-print(df[, lengthvars])
-
-# is there anyone quit job without giving end year? no
-# all missing of employee_job_end_year due to not quit job
-df[df$employee_job_quit & is.na(df$employee_job_end_year), ]
-
-Missing.Check.By.Column(df)
+library(tidyr)
 ```
 
+# Reading the File
+```{r}
+library(here)
 
+df <- read.csv(
+  here("data", "processed", "glassdoor_reviews_with_sector_revised.csv")
+)
+colSums(is.na(df))
+```
 
-# Save to a Cleaned Dataset
+# Removing duplicate reviews
+```{r}
+df_clean <- df %>%
+  distinct(review_id, .keep_all = TRUE)
 
+sum(duplicated(df_clean$review_id))
+```
+
+# Clean date column
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    rating_date = gsub('"', "", rating_date),
+    rating_date = as.POSIXct(rating_date, format = "%Y-%m-%dT%H:%M:%OSZ", tz = "UTC"),
+    rating_date = as.Date(rating_date),
+    rating_year = year(rating_date)
+  )
+
+# Converts the timestamp into a proper date format for time-based analysis.
+```
+
+# Fixing helpful / unhelpful counts
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    count_helpful = as.numeric(ifelse(is.na(count_helpful), 0, count_helpful)),
+    count_unhelpful = as.numeric(ifelse(is.na(count_unhelpful), 0, count_unhelpful))
+  ) %>%
+  mutate(
+    helpfulness_score = count_helpful-count_unhelpful
+  )
+
+colSums(is.na(df_clean))
+# Filling missing locations to unknown and standardizes
+```
+
+# Rename and clean COVID flag
+```{r}
+df_clean <- df_clean %>%
+  rename(covid_related_review = flag_covid) %>%
+  mutate(
+    covid_related_review = ifelse(
+      is.na(covid_related_review),
+      ifelse(rating_year >= 2020 & rating_year <= 2023, 1, 0),
+      ifelse(covid_related_review == TRUE, 1, 0)
+    )
+  )
+
+# Renaming the column and converting to binary
+```
+
+# Converting numeric columns
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_job_end_year = as.numeric(employee_job_end_year),
+    employee_length = as.numeric(employee_length),
+  ) %>% 
+  mutate(
+    rating_culture_values = as.numeric(rating_culture_values),
+    rating_diversity_inclusion = as.numeric(rating_diversity_inclusion),
+    rating_overall = as.numeric(rating_overall),
+    rating_senior_leadership = as.numeric(rating_senior_leadership),
+    rating_career_opportunities = as.numeric(rating_career_opportunities)
+  )
+
+```
+
+# Cleaning Employee Type
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_type = ifelse(
+      is.na(employee_type) & !is.na(employee_job_end_year),
+      "Former Employee",
+      employee_type
+    ),
+    employee_type = ifelse(
+      is.na(employee_type) & is.na(employee_job_end_year),
+      "Current Employee",
+      employee_type
+    )
+  )
+```
+
+# Impute rating_diversity_inclusion by company median
+```{r}
+df_clean <- df_clean %>%
+  group_by(company_name) %>%
+  mutate(
+    rating_diversity_inclusion = ifelse(
+      is.na(rating_diversity_inclusion),
+      median(rating_diversity_inclusion, na.rm = TRUE),
+      rating_diversity_inclusion
+    )
+  ) %>%
+  ungroup()
+```
 
 ```{r}
-write.csv(df, "data/processed/glassdoor_reviews_cleaned.csv")
+sum(is.na(df_clean$rating_diversity_inclusion))
+```
 
+# Sector-Level Fallback
+```{r}
+df_clean <- df_clean %>%
+  group_by(sector) %>%
+  mutate(
+    rating_diversity_inclusion = ifelse(
+      is.na(rating_diversity_inclusion),
+      median(rating_diversity_inclusion, na.rm = TRUE),
+      rating_diversity_inclusion
+    )
+  ) %>%
+  ungroup()
+```
+
+```{r}
+sum(is.na(df_clean$rating_diversity_inclusion))
+```
+
+# Median imputation for other numeric columns
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_length = ifelse(
+      is.na(employee_length),
+      median(employee_length, na.rm = TRUE),
+      employee_length
+    ),
+    rating_career_opportunities = ifelse(
+      is.na(rating_career_opportunities),
+      median(rating_career_opportunities, na.rm = TRUE),
+      rating_career_opportunities
+    )
+  )
+```
+
+# Feature Engineering
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_job_quit = grepl("^Former", employee_type, ignore.case = TRUE),
+    employee_job_start_year = ifelse(
+      employee_job_quit & !is.na(employee_job_end_year),
+      employee_job_end_year - employee_length,
+      rating_year - employee_length
+    ),
+    has_review_text = ifelse(
+      (is.na(review_pros) | str_trim(review_pros) == "") &
+      (is.na(review_cons) | str_trim(review_cons) == "") &
+      (is.na(summary) | str_trim(summary) == ""),
+      FALSE,
+      TRUE
+    )
+  )
+```
+
+# Fill the reviews
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    summary = ifelse(is.na(summary) | str_trim(summary) == "", "", summary),
+    advice_to_management = ifelse(is.na(advice_to_management) | str_trim(advice_to_management) == "", "", advice_to_management),
+    review_pros = ifelse(is.na(review_pros) | str_trim(review_pros) == "", "", review_pros),
+    review_cons = ifelse(is.na(review_cons) | str_trim(review_cons) == "", "", review_cons)
+  )
+```
+
+# Dropping unecessary columns
+```{r}
+df_clean <- df_clean %>%
+  select(
+    -timestamp,
+    -overview_id,
+    -review_url,
+    -employee_responses,
+    -employee_type,
+    -flag_featured,
+    -review_advice,
+    -url,
+    -overview_url,
+    -original_url,
+    -glassdoor_employer_id
+  )
+```
+
+# Final checks
+```{r}
+colSums(is.na(df_clean))
+dim(df_clean)
+```
+
+# Saving cleaned file
+```{r}
+write.csv(
+  df_clean,
+  here("data", "processed", "glassdoor_reviews_cleaned.csv"),
+  row.names = FALSE
+)
 ```
