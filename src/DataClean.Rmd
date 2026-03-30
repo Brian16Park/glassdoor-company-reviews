@@ -29,9 +29,177 @@ df <- read.csv(
 colSums(is.na(df))
 ```
 
-# Dropping Unecessary Columns
+# Removing duplicate reviews
 ```{r}
 df_clean <- df %>%
+  distinct(review_id, .keep_all = TRUE)
+
+sum(duplicated(df_clean$review_id))
+```
+
+# Clean date column
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    rating_date = gsub('"', "", rating_date),
+    rating_date = as.POSIXct(rating_date, format = "%Y-%m-%dT%H:%M:%OSZ", tz = "UTC"),
+    rating_date = as.Date(rating_date),
+    rating_year = year(rating_date)
+  )
+
+# Converts the timestamp into a proper date format for time-based analysis.
+```
+
+# Fixing helpful / unhelpful counts
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    count_helpful = as.numeric(ifelse(is.na(count_helpful), 0, count_helpful)),
+    count_unhelpful = as.numeric(ifelse(is.na(count_unhelpful), 0, count_unhelpful))
+  ) %>%
+  mutate(
+    helpfulness_score = count_helpful-count_unhelpful
+  )
+
+colSums(is.na(df_clean))
+# Filling missing locations to unknown and standardizes
+```
+
+# Rename and clean COVID flag
+```{r}
+df_clean <- df_clean %>%
+  rename(covid_related_review = flag_covid) %>%
+  mutate(
+    covid_related_review = ifelse(
+      is.na(covid_related_review),
+      ifelse(rating_year >= 2020 & rating_year <= 2023, 1, 0),
+      ifelse(covid_related_review == TRUE, 1, 0)
+    )
+  )
+
+# Renaming the column and converting to binary
+```
+
+# Converting numeric columns
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_job_end_year = as.numeric(employee_job_end_year),
+    employee_length = as.numeric(employee_length),
+  ) %>% 
+  mutate(
+    rating_culture_values = as.numeric(rating_culture_values),
+    rating_diversity_inclusion = as.numeric(rating_diversity_inclusion),
+    rating_overall = as.numeric(rating_overall),
+    rating_senior_leadership = as.numeric(rating_senior_leadership),
+    rating_career_opportunities = as.numeric(rating_career_opportunities)
+  )
+
+```
+
+# Cleaning Employee Type
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_type = ifelse(
+      is.na(employee_type) & !is.na(employee_job_end_year),
+      "Former Employee",
+      employee_type
+    ),
+    employee_type = ifelse(
+      is.na(employee_type) & is.na(employee_job_end_year),
+      "Current Employee",
+      employee_type
+    )
+  )
+```
+
+# Impute rating_diversity_inclusion by company median
+```{r}
+df_clean <- df_clean %>%
+  group_by(company_name) %>%
+  mutate(
+    rating_diversity_inclusion = ifelse(
+      is.na(rating_diversity_inclusion),
+      median(rating_diversity_inclusion, na.rm = TRUE),
+      rating_diversity_inclusion
+    )
+  )
+```
+
+```{r}
+sum(is.na(df_clean$rating_diversity_inclusion))
+```
+
+# Sector-Level Fallback
+```{r}
+df_clean <- df_clean %>%
+  group_by(sector) %>%
+  mutate(
+    rating_diversity_inclusion = ifelse(
+      is.na(rating_diversity_inclusion),
+      median(rating_diversity_inclusion, na.rm = TRUE),
+      rating_diversity_inclusion
+    )
+  ) %>%
+  ungroup()
+```
+
+```{r}
+sum(is.na(df_clean$rating_diversity_inclusion))
+```
+
+# Median imputation for other numeric columns
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_length = ifelse(
+      is.na(employee_length),
+      median(employee_length, na.rm = TRUE),
+      employee_length
+    ),
+    rating_career_opportunities = ifelse(
+      is.na(rating_career_opportunities),
+      median(rating_career_opportunities, na.rm = TRUE),
+      rating_career_opportunities
+    )
+  )
+```
+
+# Feature Engineering
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    employee_job_quit = grepl("^Former", employee_type, ignore.case = TRUE),
+    employee_job_start_year = ifelse(
+      employee_job_quit & !is.na(employee_job_end_year),
+      employee_job_end_year - employee_length,
+      rating_year - employee_length
+    ),
+    has_review_text = ifelse(
+      (is.na(review_pros) | str_trim(review_pros) == "") &
+      (is.na(review_cons) | str_trim(review_cons) == "") &
+      (is.na(summary) | str_trim(summary) == ""),
+      FALSE,
+      TRUE
+    )
+  )
+```
+
+# Fill the reviews
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    summary = ifelse(is.na(summary) | str_trim(summary) == "", "", summary),
+    advice_to_management = ifelse(is.na(advice_to_management) | str_trim(advice_to_management) == "", "", advice_to_management),
+    review_pros = ifelse(is.na(review_pros) | str_trim(review_pros) == "", "", review_pros),
+    review_cons = ifelse(is.na(review_cons) | str_trim(review_cons) == "", "", review_cons)
+  )
+```
+
+# Dropping unecessary columns
+```{r}
+df_clean <- df_clean %>%
   select(
     -timestamp,
     -overview_id,
@@ -47,245 +215,17 @@ df_clean <- df %>%
   )
 ```
 
-# Removing duplicate reviews
-```{r}
-df_clean <- df_clean %>%
-  distinct(review_id, .keep_all = TRUE)
-
-sum(duplicated(df_clean$review_id))
-```
-
-# Fixing helpful / unhelpful counts
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    count_helpful = as.numeric(ifelse(is.na(count_helpful), 0, count_helpful)),
-    count_unhelpful = as.numeric(ifelse(is.na(count_unhelpful), 0, count_unhelpful))
-  )
-
-colSums(is.na(df_clean))
-```
-
-# Employee Status And Job Title
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    employee_status = ifelse(is.na(employee_status) | employee_status == "", "Unknown", employee_status),
-    employee_job_title = ifelse(is.na(employee_job_title) | employee_job_title == "", "Unknown", employee_job_title)
-  )
-
-# Filling missing values with unknown
-```
-
-# Standardizing Employee Status and Job Title
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    employee_status = str_to_title(str_trim(employee_status)),
-    employee_job_title = str_to_title(str_squish(employee_job_title))
-  )
-
-# Removes extra spaces and standardizes capitals
-```
-
-# Employee location
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    employee_location = ifelse(is.na(employee_location) | employee_location == "", "Unknown", employee_location),
-    employee_location = str_to_title(str_squish(employee_location))
-  )
-
-# Filling missing locations to unknown and standardizes
-```
-
-# Rename and clean COVID flag
-```{r}
-df_clean <- df_clean %>%
-  rename(covid_related_review = flag_covid)
-
-df_clean <- df_clean %>%
-  mutate(
-    covid_related_review = ifelse(is.na(covid_related_review), 0,
-                                  ifelse(covid_related_review == TRUE, 1, 0))
-  )
-
-# Renaming the column and converting to binary
-```
-
-# Clean date column
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    rating_date = gsub('"', "", rating_date),
-    rating_date = as.POSIXct(rating_date, format = "%Y-%m-%dT%H:%M:%OSZ", tz = "UTC"),
-    rating_date = as.Date(rating_date)
-  )
-
-# Converts the timestamp into a proper date format for time-based analysis.
-```
-
-# Converting numeric columns
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    employee_job_end_year = as.numeric(employee_job_end_year),
-    employee_length = as.numeric(employee_length),
-    rating_culture_values = as.numeric(rating_culture_values),
-    rating_diversity_inclusion = as.numeric(rating_diversity_inclusion),
-    rating_overall = as.numeric(rating_overall),
-    rating_work_life = as.numeric(rating_work_life),
-    rating_compensation_benefits = as.numeric(rating_compensation_benefits),
-    rating_senior_leadership = as.numeric(rating_senior_leadership),
-    rating_career_opportunities = as.numeric(rating_career_opportunities)
-  )
-```
-
-# Impute rating_diversity_inclusion by company mean
-```{r}
-df_clean <- df_clean %>%
-  group_by(company_name) %>%
-  mutate(
-    rating_diversity_inclusion = ifelse(
-      is.na(rating_diversity_inclusion),
-      mean(rating_diversity_inclusion, na.rm = TRUE),
-      rating_diversity_inclusion
-    )
-  ) %>%
-  ungroup()
-```
-
-```{r}
-sum(is.na(df_clean$rating_diversity_inclusion))
-```
-
-# Fill any remaining diversity missing values with overall mean
-```{r}
-overall_div_mean <- mean(df_clean$rating_diversity_inclusion, na.rm = TRUE)
-
-df_clean <- df_clean %>%
-  mutate(
-    rating_diversity_inclusion = ifelse(
-      is.na(rating_diversity_inclusion),
-      overall_div_mean,
-      rating_diversity_inclusion
-    )
-  )
-
-# Uses the overall dataset mean if company-level data is unavailable.
-```
-
-```{r}
-sum(is.na(df_clean$rating_diversity_inclusion))
-```
-
-# mean imputation for other numeric columns
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    employee_length = ifelse(
-      is.na(employee_length),
-      mean(employee_length, na.rm = TRUE),
-      employee_length
-    ),
-    rating_career_opportunities = ifelse(
-      is.na(rating_career_opportunities),
-      mean(rating_career_opportunities, na.rm = TRUE),
-      rating_career_opportunities
-    )
-  )
-```
-
-# Clean flag columns
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    flags_business_outlook = ifelse(is.na(flags_business_outlook) | flags_business_outlook == "", "Unknown", flags_business_outlook),
-    flags_ceo_approval = ifelse(is.na(flags_ceo_approval) | flags_ceo_approval == "", "Unknown", flags_ceo_approval),
-    flags_recommend_frend = ifelse(is.na(flags_recommend_frend) | flags_recommend_frend == "", "Unknown", flags_recommend_frend)
-  )
-
-df_clean <- df_clean %>%
-  mutate(
-    flags_business_outlook = str_to_title(str_trim(flags_business_outlook)),
-    flags_ceo_approval = str_to_title(str_trim(flags_ceo_approval)),
-    flags_recommend_frend = str_to_title(str_trim(flags_recommend_frend))
-  )
-
-# Replaces missing values with "Unknown" and standardizes formatting.
-```
-
-# Clean text columns
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    summary = replace_na(summary, ""),
-    review_pros = replace_na(review_pros, ""),
-    review_cons = replace_na(review_cons, ""),
-    advice_to_management = replace_na(advice_to_management, "")
-  )
-
-df_clean <- df_clean %>%
-  mutate(
-    summary = str_replace_all(summary, "[\r\n]+", " "),
-    review_pros = str_replace_all(review_pros, "[\r\n]+", " "),
-    review_cons = str_replace_all(review_cons, "[\r\n]+", " "),
-    advice_to_management = str_replace_all(advice_to_management, "[\r\n]+", " ")
-  )
-
-df_clean <- df_clean %>%
-  mutate(
-    summary = str_squish(summary),
-    review_pros = str_squish(review_pros),
-    review_cons = str_squish(review_cons),
-    advice_to_management = str_squish(advice_to_management)
-  )
-
-# Removes: missing values, line breaks, extra spaces
-```
-
-# Remove impossible rating values
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    rating_culture_values = ifelse(rating_culture_values < 1 | rating_culture_values > 5, NA, rating_culture_values),
-    rating_diversity_inclusion = ifelse(rating_diversity_inclusion < 1 | rating_diversity_inclusion > 5, NA, rating_diversity_inclusion),
-    rating_overall = ifelse(rating_overall < 1 | rating_overall > 5, NA, rating_overall),
-    rating_work_life = ifelse(rating_work_life < 1 | rating_work_life > 5, NA, rating_work_life),
-    rating_compensation_benefits = ifelse(rating_compensation_benefits < 1 | rating_compensation_benefits > 5, NA, rating_compensation_benefits),
-    rating_senior_leadership = ifelse(rating_senior_leadership < 1 | rating_senior_leadership > 5, NA, rating_senior_leadership),
-    rating_career_opportunities = ifelse(rating_career_opportunities < 1 | rating_career_opportunities > 5, NA, rating_career_opportunities)
-  )
-
-# Ensures all ratings fall within the valid range (1–5).
-```
-
-# Drop rows missing overall rating
-```{r}
-df_clean <- df_clean %>%
-  filter(!is.na(rating_overall))
-
-# Removes rows where the main target variable (rating_overall) is missing.
-```
-
-# Create employment status feature
-```{r}
-df_clean <- df_clean %>%
-  mutate(
-    currently_employed = ifelse(is.na(employee_job_end_year), 1, 0)
-  )
-```
-
-# Final Checks
+# Final checks
 ```{r}
 colSums(is.na(df_clean))
-str(df_clean)
-summary(df_clean)
 dim(df_clean)
 ```
 
 # Saving cleaned file
 ```{r}
-write.csv(df_clean, "glassdoor_reviews_cleaned.csv", row.names = FALSE)
+write.csv(
+  df_clean,
+  here("data", "processed", "glassdoor_reviews_cleaned.csv"),
+  row.names = FALSE
+)
 ```
-
