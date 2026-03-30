@@ -67,12 +67,16 @@ colSums(is.na(df_clean))
 
 # Rename and clean COVID flag
 ```{r}
+
 df_clean <- df_clean %>%
   rename(covid_related_review = flag_covid) %>%
   mutate(
     covid_related_review = ifelse(
       is.na(covid_related_review),
-      ifelse(rating_year >= 2020 & rating_year <= 2023, 1, 0),
+      ifelse(
+        rating_year >= 2020 & rating_year <= 2021 &
+        (is.na(employee_job_end_year) | employee_job_end_year >= 2020), 1,0
+        ),
       ifelse(covid_related_review == TRUE, 1, 0)
     )
   )
@@ -221,6 +225,8 @@ df_clean <- df_clean %>%
 colSums(is.na(df_clean))
 dim(df_clean)
 ```
+
+
 
 # Saving cleaned file
 ```{r}
