@@ -1,0 +1,397 @@
+---
+title: "eda-text-mahin"
+author: "Mahin Roddur"
+date: "2026-04-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+install.packages(c("reticulate", "dplyr", "stringr", "ggplot2", "tidyr"))
+library(reticulate)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+
+py_install(c("transformers", "torch", "numpy"), pip = TRUE)
+```
+
+```{r}
+library(here)
+data <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned.csv"))
+```
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+reviews_per_company <- data %>%
+  group_by(company_name) %>%
+  summarise(n_reviews = n(), .groups = "drop")
+
+# Top 10 companies
+top_companies <- reviews_per_company %>%
+  arrange(desc(n_reviews)) %>%
+  slice_head(n = 20)
+
+ggplot(top_companies, aes(x = reorder(company_name, n_reviews), y = n_reviews)) +
+  geom_col() +
+  geom_text(aes(label = n_reviews), hjust = 0.1, size = 3) +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Companies by Number of Reviews",
+    x = "Company",
+    y = "Number of Reviews"
+  )
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+reviews_per_sector <- data %>%
+  group_by(sector) %>%
+  summarise(n_reviews = n(), .groups = "drop")
+
+ggplot(reviews_per_sector, aes(x = reorder(sector, n_reviews), y = n_reviews)) +
+  geom_col() +
+  geom_text(aes(label = n_reviews), hjust = -0.1, size = 3) +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Reviews per Sector",
+    x = "Sector",
+    y = "Number of Reviews"
+  )
+```
+
+## Word Count Histograms
+```{r}
+library(stringr)
+
+count_words <- function(x) {
+  x <- str_squish(x)
+  ifelse(is.na(x) | x == "", 0, str_count(x, "\\S+"))
+}
+
+wc_df <- data %>%
+  transmute(
+    summary_wc = count_words(summary),
+    pros_wc = count_words(review_pros),
+    cons_wc = count_words(review_cons),
+    advice_wc = count_words(advice_to_management)
+  )
+
+wc_long <- wc_df %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "column",
+    values_to = "word_count"
+  )
+
+
+ggplot(wc_long, aes(x = word_count)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~ column, scales = "free") +
+  theme_minimal() +
+  labs(
+    title = "Word Count Distribution by Review Field",
+    x = "Word Count",
+    y = "Frequency"
+  )
+```
+## Mean word count vs overall rating
+
+```{r}
+wc_rating_df <- data %>%
+  mutate(
+    summary_wc = count_words(summary),
+    pros_wc = count_words(review_pros),
+    cons_wc = count_words(review_cons),
+    advice_wc = count_words(advice_to_management)
+  )
+
+wc_rating_long <- wc_rating_df %>%
+  select(rating_overall, summary_wc, pros_wc, cons_wc, advice_wc) %>%
+  pivot_longer(
+    cols = c(summary_wc, pros_wc, cons_wc, advice_wc),
+    names_to = "column",
+    values_to = "word_count"
+  ) %>%
+  mutate(
+    column = recode(column,
+      summary_wc = "Summary",
+      pros_wc = "Pros",
+      cons_wc = "Cons",
+      advice_wc = "Advice"
+    )
+  )
+
+wc_rating_summary <- wc_rating_long %>%
+  group_by(column, rating_overall) %>%
+  summarise(mean_wc = mean(word_count, na.rm = TRUE), .groups = "drop")
+
+ggplot(wc_rating_summary, aes(x = rating_overall, y = mean_wc)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ column, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Average Word Count by Overall Rating",
+    x = "Overall Rating",
+    y = "Average Word Count"
+  )
+```
+## Sentiment with Distillbert
+```{r}
+clean_text_for_bert <- function(x) {
+  x %>%
+    str_replace_all("[\r\n\t]", " ") %>%
+    str_squish()
+}
+
+text_df <- wc_rating_df %>%
+  transmute(
+    review_id,
+    rating_overall,
+    employee_length,
+    summary = clean_text_for_bert(summary),
+    review_pros = clean_text_for_bert(review_pros),
+    review_cons = clean_text_for_bert(review_cons),
+    advice_to_management = clean_text_for_bert(advice_to_management),
+    summary_wc,
+    pros_wc,
+    cons_wc,
+    advice_wc
+  )
+
+py_run_string("
+from transformers import pipeline
+
+sentiment_pipe = pipeline(
+    'sentiment-analysis',
+    model='distilbert-base-uncased-finetuned-sst-2-english',
+    truncation=True
+)
+
+def get_sentiment_batch(text_list):
+    cleaned = []
+    for x in text_list:
+        if x is None:
+            cleaned.append('')
+        else:
+            cleaned.append(str(x))
+    results = sentiment_pipe(cleaned)
+    return results
+")
+
+```
+
+```{r}
+get_distilbert_sentiment <- function(text_vector, batch_size = 32) {
+  n <- length(text_vector)
+  out_label <- character(n)
+  out_score <- numeric(n)
+
+  for (start in seq(1, n, by = batch_size)) {
+    end <- min(start + batch_size - 1, n)
+    batch <- as.character(text_vector[start:end])
+    batch[is.na(batch)] <- ""
+
+    results <- py$get_sentiment_batch(batch)
+
+    for (i in seq_along(results)) {
+      out_label[start + i - 1] <- results[[i]]$label
+      out_score[start + i - 1] <- results[[i]]$score
+    }
+  }
+
+  tibble(
+    sentiment_label = out_label,
+    sentiment_score = out_score
+  )
+}
+```
+
+```{r}
+summary_sent <- get_distilbert_sentiment(text_df$summary)
+pros_sent    <- get_distilbert_sentiment(text_df$review_pros)
+cons_sent    <- get_distilbert_sentiment(text_df$review_cons)
+advice_sent  <- get_distilbert_sentiment(text_df$advice_to_management)
+```
+
+
+```{r}
+text_sentiment_df <- text_df %>%
+  bind_cols(
+    summary_sent %>%
+      rename(
+        summary_sentiment_label = sentiment_label,
+        summary_sentiment_score = sentiment_score
+      ),
+    pros_sent %>%
+      rename(
+        pros_sentiment_label = sentiment_label,
+        pros_sentiment_score = sentiment_score
+      ),
+    cons_sent %>%
+      rename(
+        cons_sentiment_label = sentiment_label,
+        cons_sentiment_score = sentiment_score
+      ),
+    advice_sent %>%
+      rename(
+        advice_sentiment_label = sentiment_label,
+        advice_sentiment_score = sentiment_score
+      )
+  )
+
+```
+
+
+```{r}
+text_sentiment_df <- text_sentiment_df %>%
+  mutate(
+    summary_sentiment_signed = ifelse(summary_sentiment_label == "POSITIVE",
+                                      summary_sentiment_score,
+                                      -summary_sentiment_score),
+    pros_sentiment_signed = ifelse(pros_sentiment_label == "POSITIVE",
+                                   pros_sentiment_score,
+                                   -pros_sentiment_score),
+    cons_sentiment_signed = ifelse(cons_sentiment_label == "POSITIVE",
+                                   cons_sentiment_score,
+                                   -cons_sentiment_score),
+    advice_sentiment_signed = ifelse(advice_sentiment_label == "POSITIVE",
+                                     advice_sentiment_score,
+                                     -advice_sentiment_score)
+  )
+
+text_sentiment_df
+```
+
+
+
+```{r}
+sent_wc_long <- text_sentiment_df %>%
+  transmute(
+    rating_overall,
+    summary_wc, summary_sentiment_signed,
+    pros_wc,    pros_sentiment_signed,
+    cons_wc,    cons_sentiment_signed,
+    advice_wc,  advice_sentiment_signed
+  ) %>%
+  pivot_longer(
+    cols = c(summary_wc, summary_sentiment_signed,
+             pros_wc, pros_sentiment_signed,
+             cons_wc, cons_sentiment_signed,
+             advice_wc, advice_sentiment_signed),
+    names_to = c("column", ".value"),
+    names_pattern = "(summary|pros|cons|advice)_(wc|sentiment_signed)"
+  ) %>%
+  mutate(
+    column = recode(column,
+      summary = "Summary",
+      pros = "Pros",
+      cons = "Cons",
+      advice = "Advice"
+    ) 
+  )
+
+head(sent_wc_long)
+```
+
+
+```{r}
+ggplot(sent_wc_long, aes(x = wc, y = sentiment_signed)) +
+  geom_point(alpha = 0.2) +
+  geom_jitter(height = 0.1, alpha = 0.2) +
+  facet_wrap(~ column, scales = "free_x") +
+  theme_minimal() +
+  labs(
+    title = "Sentiment vs Word Count by Review Field",
+    x = "Word Count",
+    y = "Signed DistilBERT Sentiment"
+  )
+```
+```{r}
+sent_wc_long %>%
+  mutate(
+    sentiment_type = case_when(
+      sentiment_signed > 0 ~ "Positive",
+      sentiment_signed < 0 ~ "Negative"
+    )
+  ) %>%
+  filter(!is.na(sentiment_type)) %>%
+  mutate(
+    wc_bin = cut(
+      wc,
+      breaks = c(0,10,25,50,100,200,500, Inf),
+      include.lowest = TRUE
+    )
+  ) %>%
+  count(column, wc_bin, sentiment_type) %>%
+  group_by(column, wc_bin) %>%   # 🔑 normalize within bin
+  mutate(prop = n / sum(n)) %>%
+  ungroup() %>%
+  ggplot(aes(x = wc_bin, y = prop, fill = sentiment_type)) +
+  geom_col() +
+  facet_wrap(~ column) +
+  theme_minimal() +
+  labs(
+    title = "Sentiment Composition by Word Count",
+    x = "Word Count Bin",
+    y = "Proportion"
+  )
+```
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+sent_len_long <- text_sentiment_df %>%
+  transmute(
+    employee_length,
+    Summary = summary_sentiment_signed,
+    Pros = pros_sentiment_signed,
+    Cons = cons_sentiment_signed,
+    Advice = advice_sentiment_signed
+  ) %>%
+  filter(!is.na(employee_length)) %>%
+  pivot_longer(
+    cols = c(Summary, Pros, Cons, Advice),
+    names_to = "column",
+    values_to = "sentiment"
+  )
+```
+
+```{r}
+sent_len_prop <- sent_len_long %>%
+  mutate(
+    is_positive = sentiment > 0,
+    length_bin = cut(
+      employee_length,
+      breaks = c(0, 1, 3, 5, 10, 20, Inf),
+      labels = c("0-1", "1-3", "3-5", "5-10", "10-20", "20+"),
+      include.lowest = TRUE
+    )
+  ) %>%
+  group_by(column, length_bin) %>%
+  summarise(p_positive = mean(is_positive), .groups = "drop")
+
+ggplot(sent_len_prop, aes(x = length_bin, y = p_positive)) +
+  geom_col() +
+  facet_wrap(~ column) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Proportion of Positive Sentiment by Employee Length",
+    x = "Employee Length (years)",
+    y = "Proportion Positive"
+  )
+```
+
