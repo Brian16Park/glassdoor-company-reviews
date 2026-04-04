@@ -2,20 +2,48 @@
 title: "eda-text-mahin"
 author: "Mahin Roddur"
 date: "2026-04-02"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-install.packages(c("reticulate", "dplyr", "stringr", "ggplot2", "tidyr"))
+
+pkg_needed <- c("tidyverse", 
+                "lubridate", 
+                "ggplot2",
+                "ggcorrplot",
+                "here",
+                "corrplot",
+                "vader",
+                "tidytext",
+                "stringr",
+                "reticulate",
+                "tidyr"
+                )
+for (p in pkg_needed) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
 library(reticulate)
 library(dplyr)
 library(stringr)
 library(ggplot2)
 library(tidyr)
 
-py_install(c("transformers", "torch", "numpy"), pip = TRUE)
+pkgs <- c("transformers", "torch", "numpy", "vaderSentiment")
+
+missing <- pkgs[!sapply(pkgs, py_module_available)]
+
+if (length(missing) > 0) {
+  py_install(missing, pip = TRUE)
+}
+
 ```
+
 
 ```{r}
 library(here)
@@ -160,6 +188,7 @@ text_df <- wc_rating_df %>%
     review_id,
     rating_overall,
     employee_length,
+    flags_recommend_frend,
     summary = clean_text_for_bert(summary),
     review_pros = clean_text_for_bert(review_pros),
     review_cons = clean_text_for_bert(review_cons),
@@ -170,30 +199,66 @@ text_df <- wc_rating_df %>%
     advice_wc
   )
 
+library(reticulate)
+library(dplyr)
+library(tibble)
+
+dir.create("sent_scores", showWarnings = FALSE)
+
+load_or_compute <- function(path, compute_fn) {
+  if (file.exists(path)) {
+    message("Loading cached file: ", path)
+    readRDS(path)
+  } else {
+    message("Computing and saving: ", path)
+    result <- compute_fn()
+    saveRDS(result, path)
+    result
+  }
+}
+
 py_run_string("
 from transformers import pipeline
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-sentiment_pipe = pipeline(
-    'sentiment-analysis',
-    model='distilbert-base-uncased-finetuned-sst-2-english',
-    truncation=True
-)
+vader_analyzer = SentimentIntensityAnalyzer()
+pipes = {}
 
-def get_sentiment_batch(text_list):
+def get_pipe(model_name):
+    if model_name not in pipes:
+        pipes[model_name] = pipeline(
+            'sentiment-analysis',
+            model=model_name,
+            truncation=True,
+            max_length=512
+        )
+    return pipes[model_name]
+
+def run_transformer_batch(text_list, model_name):
+    pipe = get_pipe(model_name)
     cleaned = []
     for x in text_list:
         if x is None:
             cleaned.append('')
         else:
             cleaned.append(str(x))
-    results = sentiment_pipe(cleaned)
-    return results
+    return pipe(cleaned)
+
+def run_vader_batch(text_list):
+    out = []
+    for x in text_list:
+        if x is None:
+            text = ''
+        else:
+            text = str(x)
+        out.append(vader_analyzer.polarity_scores(text))
+    return out
 ")
 
 ```
 
 ```{r}
-get_distilbert_sentiment <- function(text_vector, batch_size = 32) {
+get_transformer_sentiment <- function(text_vector, model_name, batch_size = 32) {
   n <- length(text_vector)
   out_label <- character(n)
   out_score <- numeric(n)
@@ -203,7 +268,7 @@ get_distilbert_sentiment <- function(text_vector, batch_size = 32) {
     batch <- as.character(text_vector[start:end])
     batch[is.na(batch)] <- ""
 
-    results <- py$get_sentiment_batch(batch)
+    results <- py$run_transformer_batch(batch, model_name)
 
     for (i in seq_along(results)) {
       out_label[start + i - 1] <- results[[i]]$label
@@ -216,182 +281,402 @@ get_distilbert_sentiment <- function(text_vector, batch_size = 32) {
     sentiment_score = out_score
   )
 }
+
+get_vader_sentiment <- function(text_vector, batch_size = 1000) {
+  n <- length(text_vector)
+  out_neg <- numeric(n)
+  out_neu <- numeric(n)
+  out_pos <- numeric(n)
+  out_compound <- numeric(n)
+
+  for (start in seq(1, n, by = batch_size)) {
+    end <- min(start + batch_size - 1, n)
+    batch <- as.character(text_vector[start:end])
+    batch[is.na(batch)] <- ""
+
+    results <- py$run_vader_batch(batch)
+
+    for (i in seq_along(results)) {
+      out_neg[start + i - 1] <- results[[i]]$neg
+      out_neu[start + i - 1] <- results[[i]]$neu
+      out_pos[start + i - 1] <- results[[i]]$pos
+      out_compound[start + i - 1] <- results[[i]]$compound
+    }
+  }
+
+  tibble(
+    neg = out_neg,
+    neu = out_neu,
+    pos = out_pos,
+    compound = out_compound
+  )
+}
+
+cache_transformer_model <- function(model_name, file_stub, text_df) {
+  load_or_compute(
+    file.path("sent_scores", paste0(file_stub, "_scores.rds")),
+    function() {
+      list(
+        summary = get_transformer_sentiment(text_df$summary, model_name),
+        review_pros = get_transformer_sentiment(text_df$review_pros, model_name),
+        review_cons = get_transformer_sentiment(text_df$review_cons, model_name),
+        advice_to_management = get_transformer_sentiment(text_df$advice_to_management, model_name)
+      )
+    }
+  )
+}
 ```
 
 ```{r}
-summary_sent <- get_distilbert_sentiment(text_df$summary)
-pros_sent    <- get_distilbert_sentiment(text_df$review_pros)
-cons_sent    <- get_distilbert_sentiment(text_df$review_cons)
-advice_sent  <- get_distilbert_sentiment(text_df$advice_to_management)
+# =========================
+# OPTIONAL: RESET CACHE
+# Uncomment ONLY if you want to recompute sentiment
+# =========================
+
+# unlink("sent_scores", recursive = TRUE)
+
+# or delete specific models:
+# file.remove("sent_scores/distilbert_scores.rds")
+# file.remove("sent_scores/roberta_scores.rds")
+# file.remove("sent_scores/vader_scores.rds")
+```
+
+
+```{r}
+distilbert_scores <- cache_transformer_model(
+  "distilbert-base-uncased-finetuned-sst-2-english",
+  "distilbert",
+  text_df
+)
+
+roberta_scores <- cache_transformer_model(
+  "cardiffnlp/twitter-roberta-base-sentiment-latest",
+  "roberta",
+  text_df
+)
+
+vader_scores <- load_or_compute(
+  file.path("sent_scores", "vader_scores.rds"),
+  function() {
+    list(
+      summary = get_vader_sentiment(text_df$summary),
+      review_pros = get_vader_sentiment(text_df$review_pros),
+      review_cons = get_vader_sentiment(text_df$review_cons),
+      advice_to_management = get_vader_sentiment(text_df$advice_to_management)
+    )
+  }
+)
 ```
 
 
 ```{r}
 text_sentiment_df <- text_df %>%
   bind_cols(
-    summary_sent %>%
+    distilbert_scores$summary %>%
       rename(
-        summary_sentiment_label = sentiment_label,
-        summary_sentiment_score = sentiment_score
+        distilbert_summary_label = sentiment_label,
+        distilbert_summary_score = sentiment_score
       ),
-    pros_sent %>%
+    distilbert_scores$review_pros %>%
       rename(
-        pros_sentiment_label = sentiment_label,
-        pros_sentiment_score = sentiment_score
+        distilbert_pros_label = sentiment_label,
+        distilbert_pros_score = sentiment_score
       ),
-    cons_sent %>%
+    distilbert_scores$review_cons %>%
       rename(
-        cons_sentiment_label = sentiment_label,
-        cons_sentiment_score = sentiment_score
+        distilbert_cons_label = sentiment_label,
+        distilbert_cons_score = sentiment_score
       ),
-    advice_sent %>%
+    distilbert_scores$advice_to_management %>%
       rename(
-        advice_sentiment_label = sentiment_label,
-        advice_sentiment_score = sentiment_score
+        distilbert_advice_label = sentiment_label,
+        distilbert_advice_score = sentiment_score
       )
+  ) %>%
+  mutate(
+    distilbert_summary_signed = ifelse(distilbert_summary_label == "POSITIVE",
+                                       distilbert_summary_score,
+                                       -distilbert_summary_score),
+    distilbert_pros_signed = ifelse(distilbert_pros_label == "POSITIVE",
+                                    distilbert_pros_score,
+                                    -distilbert_pros_score),
+    distilbert_cons_signed = ifelse(distilbert_cons_label == "POSITIVE",
+                                    distilbert_cons_score,
+                                    -distilbert_cons_score),
+    distilbert_advice_signed = ifelse(distilbert_advice_label == "POSITIVE",
+                                      distilbert_advice_score,
+                                      -distilbert_advice_score)
+  ) %>%
+  bind_cols(
+    roberta_scores$summary %>%
+      rename(
+        roberta_summary_label = sentiment_label,
+        roberta_summary_score = sentiment_score
+      ),
+    roberta_scores$review_pros %>%
+      rename(
+        roberta_pros_label = sentiment_label,
+        roberta_pros_score = sentiment_score
+      ),
+    roberta_scores$review_cons %>%
+      rename(
+        roberta_cons_label = sentiment_label,
+        roberta_cons_score = sentiment_score
+      ),
+    roberta_scores$advice_to_management %>%
+      rename(
+        roberta_advice_label = sentiment_label,
+        roberta_advice_score = sentiment_score
+      )
+  ) %>%
+  bind_cols(
+    vader_scores$summary %>% rename_with(~ paste0("vader_summary_", .x)),
+    vader_scores$review_pros %>% rename_with(~ paste0("vader_pros_", .x)),
+    vader_scores$review_cons %>% rename_with(~ paste0("vader_cons_", .x)),
+    vader_scores$advice_to_management %>% rename_with(~ paste0("vader_advice_", .x))
   )
 
 ```
-
 
 ```{r}
 text_sentiment_df <- text_sentiment_df %>%
   mutate(
-    summary_sentiment_signed = ifelse(summary_sentiment_label == "POSITIVE",
-                                      summary_sentiment_score,
-                                      -summary_sentiment_score),
-    pros_sentiment_signed = ifelse(pros_sentiment_label == "POSITIVE",
-                                   pros_sentiment_score,
-                                   -pros_sentiment_score),
-    cons_sentiment_signed = ifelse(cons_sentiment_label == "POSITIVE",
-                                   cons_sentiment_score,
-                                   -cons_sentiment_score),
-    advice_sentiment_signed = ifelse(advice_sentiment_label == "POSITIVE",
-                                     advice_sentiment_score,
-                                     -advice_sentiment_score)
+    roberta_summary_signed = case_when(
+      roberta_summary_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_summary_score,
+      roberta_summary_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_summary_score,
+      roberta_summary_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    ),
+    roberta_pros_signed = case_when(
+      roberta_pros_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_pros_score,
+      roberta_pros_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_pros_score,
+      roberta_pros_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    ),
+    roberta_cons_signed = case_when(
+      roberta_cons_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_cons_score,
+      roberta_cons_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_cons_score,
+      roberta_cons_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    ),
+    roberta_advice_signed = case_when(
+      roberta_advice_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_advice_score,
+      roberta_advice_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_advice_score,
+      roberta_advice_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    )
   )
-
-text_sentiment_df
 ```
 
 
-
 ```{r}
-sent_wc_long <- text_sentiment_df %>%
-  transmute(
-    rating_overall,
-    summary_wc, summary_sentiment_signed,
-    pros_wc,    pros_sentiment_signed,
-    cons_wc,    cons_sentiment_signed,
-    advice_wc,  advice_sentiment_signed
-  ) %>%
-  pivot_longer(
-    cols = c(summary_wc, summary_sentiment_signed,
-             pros_wc, pros_sentiment_signed,
-             cons_wc, cons_sentiment_signed,
-             advice_wc, advice_sentiment_signed),
-    names_to = c("column", ".value"),
-    names_pattern = "(summary|pros|cons|advice)_(wc|sentiment_signed)"
-  ) %>%
+sent_long <- text_sentiment_df %>%
   mutate(
-    column = recode(column,
-      summary = "Summary",
-      pros = "Pros",
-      cons = "Cons",
-      advice = "Advice"
-    ) 
-  )
-
-head(sent_wc_long)
-```
-
-
-```{r}
-ggplot(sent_wc_long, aes(x = wc, y = sentiment_signed)) +
-  geom_point(alpha = 0.2) +
-  geom_jitter(height = 0.1, alpha = 0.2) +
-  facet_wrap(~ column, scales = "free_x") +
-  theme_minimal() +
-  labs(
-    title = "Sentiment vs Word Count by Review Field",
-    x = "Word Count",
-    y = "Signed DistilBERT Sentiment"
-  )
-```
-```{r}
-sent_wc_long %>%
-  mutate(
-    sentiment_type = case_when(
-      sentiment_signed > 0 ~ "Positive",
-      sentiment_signed < 0 ~ "Negative"
+    roberta_summary_signed = case_when(
+      roberta_summary_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_summary_score,
+      roberta_summary_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_summary_score,
+      roberta_summary_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    ),
+    roberta_pros_signed = case_when(
+      roberta_pros_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_pros_score,
+      roberta_pros_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_pros_score,
+      roberta_pros_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    ),
+    roberta_cons_signed = case_when(
+      roberta_cons_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_cons_score,
+      roberta_cons_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_cons_score,
+      roberta_cons_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
+    ),
+    roberta_advice_signed = case_when(
+      roberta_advice_label %in% c("POSITIVE", "positive", "LABEL_2") ~ roberta_advice_score,
+      roberta_advice_label %in% c("NEGATIVE", "negative", "LABEL_0") ~ -roberta_advice_score,
+      roberta_advice_label %in% c("NEUTRAL", "neutral", "LABEL_1") ~ 0,
+      TRUE ~ NA_real_
     )
   ) %>%
-  filter(!is.na(sentiment_type)) %>%
+  transmute(
+    # 🔑 KEEP ALL META VARIABLES HERE
+    review_id,
+    employee_length,
+    rating_overall,
+    flags_recommend_frend,
+
+    summary_wc,
+    pros_wc,
+    cons_wc,
+    advice_wc,
+
+    # models
+    DistilBERT_summary = distilbert_summary_signed,
+    DistilBERT_pros    = distilbert_pros_signed,
+    DistilBERT_cons    = distilbert_cons_signed,
+    DistilBERT_advice  = distilbert_advice_signed,
+
+    RoBERTa_summary = roberta_summary_signed,
+    RoBERTa_pros    = roberta_pros_signed,
+    RoBERTa_cons    = roberta_cons_signed,
+    RoBERTa_advice  = roberta_advice_signed,
+
+    VADER_summary = vader_summary_compound,
+    VADER_pros    = vader_pros_compound,
+    VADER_cons    = vader_cons_compound,
+    VADER_advice  = vader_advice_compound
+  ) %>%
+  pivot_longer(
+    cols = -(review_id:advice_wc),
+    names_to = c("model", "column"),
+    names_sep = "_",
+    values_to = "sentiment"
+  ) %>%
+  mutate(
+    wc = case_when(
+      column == "summary" ~ summary_wc,
+      column == "pros"    ~ pros_wc,
+      column == "cons"    ~ cons_wc,
+      column == "advice"  ~ advice_wc
+    ),
+    column = recode(column,
+      summary = "Summary",
+      pros    = "Pros",
+      cons    = "Cons",
+      advice  = "Advice"
+    )
+  )
+
+## Scaling sentiment across models
+sent_long <- sent_long %>%
+  group_by(model, column) %>%
+  mutate(
+    sentiment_scaled = as.numeric(scale(sentiment))
+  ) %>%
+  ungroup()
+
+head(sent_long)
+```
+
+
+```{r}
+ggplot(sent_long, aes(x = wc, y = sentiment_scaled)) +
+  geom_point(alpha = 0.12) +
+  geom_smooth(se = FALSE) +
+  facet_grid(model ~ column, scales = "free_x") +
+  theme_minimal() +
+  labs(
+    title = "Sentiment vs Word Count",
+    x = "Word Count",
+    y = "Normalized Sentiment Score"
+  )
+```
+
+
+```{r}
+sent_prop <- sent_long %>%
   mutate(
     wc_bin = cut(
       wc,
-      breaks = c(0,10,25,50,100,200,500, Inf),
+      breaks = c(0, 10, 25, 50, 100, 200, 500, Inf),
       include.lowest = TRUE
-    )
+    ),
+    is_positive = sentiment > 0
   ) %>%
-  count(column, wc_bin, sentiment_type) %>%
-  group_by(column, wc_bin) %>%   # 🔑 normalize within bin
-  mutate(prop = n / sum(n)) %>%
-  ungroup() %>%
-  ggplot(aes(x = wc_bin, y = prop, fill = sentiment_type)) +
-  geom_col() +
+  group_by(model, column, wc_bin) %>%
+  summarise(
+    p_positive = mean(is_positive, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(sent_prop, aes(x = wc_bin, y = p_positive, fill = model)) +
+  geom_col(position = "dodge") +
   facet_wrap(~ column) +
   theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
   labs(
-    title = "Sentiment Composition by Word Count",
+    title = "Proportion Positive by Word Count Bin and Model",
     x = "Word Count Bin",
-    y = "Proportion"
-  )
-```
-```{r}
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-sent_len_long <- text_sentiment_df %>%
-  transmute(
-    employee_length,
-    Summary = summary_sentiment_signed,
-    Pros = pros_sentiment_signed,
-    Cons = cons_sentiment_signed,
-    Advice = advice_sentiment_signed
-  ) %>%
-  filter(!is.na(employee_length)) %>%
-  pivot_longer(
-    cols = c(Summary, Pros, Cons, Advice),
-    names_to = "column",
-    values_to = "sentiment"
+    y = "Proportion Positive",
+    fill = "Model"
   )
 ```
 
-```{r}
-sent_len_prop <- sent_len_long %>%
-  mutate(
-    is_positive = sentiment > 0,
-    length_bin = cut(
-      employee_length,
-      breaks = c(0, 1, 3, 5, 10, 20, Inf),
-      labels = c("0-1", "1-3", "3-5", "5-10", "10-20", "20+"),
-      include.lowest = TRUE
-    )
-  ) %>%
-  group_by(column, length_bin) %>%
-  summarise(p_positive = mean(is_positive), .groups = "drop")
 
-ggplot(sent_len_prop, aes(x = length_bin, y = p_positive)) +
-  geom_col() +
+
+```{r}
+ggplot(sent_long, aes(x = employee_length, y = sentiment_scaled, color = model)) +
+  geom_smooth(method = "lm", se = FALSE) +
   facet_wrap(~ column) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(
-    title = "Proportion of Positive Sentiment by Employee Length",
+    title = "Sentiment vs Employee Length (Rough interpolation due to not as many unique vals",
     x = "Employee Length (years)",
-    y = "Proportion Positive"
+    y = "Scaled Sentiment"
   )
 ```
+```{r}
+sent_len_summary <- sent_long %>%
+  group_by(model, column, employee_length) %>%
+  summarise(
+    mean_sentiment = mean(sentiment_scaled, na.rm = TRUE),
+    median_sentiment = median(sentiment_scaled, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(sent_len_summary, aes(x = employee_length, y = median_sentiment, color = model)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ column) +
+  theme_minimal()
+```
+ 
+
+```{r}
+ggplot(sent_long, aes(x = factor(rating_overall), y = sentiment_scaled, fill = model)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  facet_wrap(~ column) +
+  theme_minimal() +
+  labs(
+    title = "Sentiment Distribution by Rating",
+    x = "Rating",
+    y = "Scaled Sentiment"
+  )
+```
+```{r}
+sent_rating_summary <- sent_long %>%
+  group_by(model, column, rating_overall) %>%
+  summarise(
+    mean_sentiment = mean(sentiment_scaled, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(sent_rating_summary, aes(x = factor(rating_overall), y = mean_sentiment, color = model, group = model)) +
+  geom_line() +
+  geom_point(size = 2) +
+  facet_wrap(~ column) +
+  theme_minimal() +
+  labs(
+    title = "Sentiment vs Rating",
+    x = "Rating",
+    y = "Average Scaled Sentiment"
+  )
+```
+
+
+
+```{r}
+sent_rec_summary <- sent_long %>%
+  group_by(model, column, flags_recommend_frend) %>%
+  summarise(
+    mean_sentiment = mean(sentiment_scaled, na.rm = TRUE),
+    median_sentiment = median(sentiment_scaled, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(sent_rec_summary, aes(x = flags_recommend_frend, y = mean_sentiment, fill = model)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ column) +
+  theme_minimal()
+```
+
 
