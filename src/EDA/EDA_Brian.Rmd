@@ -1,6 +1,6 @@
 ---
 title: "EDA_Brian"
-author: "Your Name"
+author: "Brian Park"
 date: "2026-04-09"
 output:
   pdf_document: default
