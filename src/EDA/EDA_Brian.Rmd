@@ -1,0 +1,328 @@
+---
+title: "EDA_Brian"
+author: "Your Name"
+date: "2026-04-09"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Loading Libraries
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(here)
+library(scales)
+library(forcats)
+```
+
+# Read from current data version
+```{r}
+df <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned_v2.csv"))
+
+dim(df)
+head(df)
+```
+
+# To make plots more appealing
+```{r}
+theme_set(
+  theme_minimal(base_size = 13) +
+    theme(
+      plot.title = element_text(face = "bold", size = 15),
+      plot.subtitle = element_text(size = 11),
+      axis.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom"
+    )
+)
+```
+
+# 1. Missing Data Analysis
+```{r}
+colSums(is.na(df))
+```
+### Explanation:
+The variable employee_job_end_year contains missing values that correspond to
+current employees who have not left their jobs. These are structurally missing
+values and were intentionally preserved.
+
+# 2. Overall Rating Distribution
+```{r}
+ggplot(df, aes(x = factor(rating_overall))) +
+  geom_bar(fill = "steelblue", width = 0.7) +
+  labs(
+    title = "Distribution of Overall Ratings",
+    subtitle = "Employee reviews are concentrated at lower ratings",
+    x = "Overall Rating",
+    y = "Number of Reviews"
+  )
+```
+
+### Explanation: 
+The distribution of overall ratings is skewed toward lower values, with a large
+number of reviews concentrated around ratings of 1 and 2. This indicates that 
+negative reviews are more common in this dataset. Higher ratings (4–5) appear 
+less frequently, suggesting that employees are more likely to report negative experiences than positive ones.
+
+# 3. Employee Length Distribution
+```{r}
+ggplot(df, aes(x = employee_length)) +
+  geom_histogram(binwidth = 1, fill = "darkgreen", color = "white") +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  labs(
+    title = "Distribution of Employee Tenure",
+    subtitle = "Most reviewers have relatively short tenures",
+    x = "Employee Length (Years)",
+    y = "Number of Reviews"
+  )
+```
+
+### Explanation:
+The distribution of employee tenure is right-skewed, with most employees having relatively short lengths of employment, typically between 1 and 3 years. As
+tenure increases, the number of employees decreases significantly. A small 
+number of employees have long tenures, which appear as outliers in the 
+distribution. This pattern suggests that employee turnover may be relatively 
+high, with fewer individuals remaining at a company for extended periods.
+
+# 4. Recommendation Distribution
+```{r}
+ggplot(df, aes(x = flags_recommend_frend, fill = flags_recommend_frend)) +
+  geom_bar(show.legend = FALSE) +
+  scale_fill_manual(values = c("NEGATIVE" = "#C44E52", "POSITIVE" = "#4C72B0")) +
+  labs(
+    title = "Distribution of Recommendation Outcomes",
+    subtitle = "Negative recommendations are more common in this dataset",
+    x = "Recommendation",
+    y = "Number of Reviews"
+  )
+```
+
+### Explanation
+The distribution of recommendation outcomes shows a clear imbalance, with 
+significantly more negative recommendations than positive ones. This indicates 
+that a larger proportion of employees in the dataset do not recommend their 
+company. The imbalance suggests that negative experiences may be more frequently reported, which is consistent with the tendency for dissatisfied individuals to 
+leave reviews more often than satisfied ones.
+
+# 5. Overall Rating vs Recommendation
+```{r}
+ggplot(df, aes(x = flags_recommend_frend, y = rating_overall, fill = flags_recommend_frend)) +
+  geom_boxplot(alpha = 0.8, show.legend = FALSE) +
+  scale_fill_manual(values = c("NEGATIVE" = "#C44E52", "POSITIVE" = "#4C72B0")) +
+  labs(
+    title = "Overall Rating by Recommendation Outcome",
+    subtitle = "Employees who recommend their company give substantially higher ratings",
+    x = "Recommendation",
+    y = "Overall Rating"
+  )
+```
+
+### Explanation
+There is a strong relationship between overall rating and recommendation 
+behavior. Reviews with positive recommendations tend to have much higher overall ratings, while negative recommendations are associated with lower ratings. This suggests that overall rating is one of the strongest indicators of whether an
+employee would recommend the company.
+
+# 6. Correlation Between Rating Variables
+```{r}
+ratings <- df %>%
+  select(
+    rating_overall,
+    rating_work_life,
+    rating_culture_values,
+    rating_compensation_benefits,
+    rating_senior_leadership,
+    rating_career_opportunities
+  )
+
+corr_matrix <- cor(ratings, use = "complete.obs")
+
+corrplot(
+  corr_matrix,
+  method = "color",
+  type = "upper",
+  addCoef.col = "black",
+  tl.col = "black",
+  tl.srt = 30,
+  number.cex = 0.7
+)
+```
+
+### Explanation
+The correlation matrix shows that the workplace rating variables are positively
+related to one another. In particular, overall rating tends to move together
+with culture, leadership, and career opportunities. This means that when 
+employees rate one important workplace dimension highly, they often rate other dimensions highly as well, suggesting overlap among these measures.
+
+# 7. Ratings by Sector
+```{r}
+ggplot(df, aes(x = fct_reorder(sector, rating_overall, .fun = median), y = rating_overall)) +
+  geom_boxplot(fill = "skyblue", alpha = 0.8, outlier.alpha = 0.4) +
+  coord_flip() +
+  labs(
+    title = "Overall Rating by Sector",
+    subtitle = "Median ratings vary noticeably across industries",
+    x = "Sector",
+    y = "Overall Rating"
+  )
+```
+
+### Explanation
+Employee ratings vary across sectors, with some industries showing higher median satisfaction than others. The spread within each sector also differs, meaning 
+that some sectors have more consistent employee experiences while others are 
+more mixed. This suggests that industry context plays an important role in 
+shaping employee satisfaction.
+
+# 8. Recommendation Rate by Sector
+```{r}
+ggplot(df, aes(x = fct_infreq(sector), fill = flags_recommend_frend)) +
+  geom_bar(position = "fill") +
+  coord_flip() +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c("NEGATIVE" = "#C44E52", "POSITIVE" = "#4C72B0")) +
+  labs(
+    title = "Recommendation Rate by Sector",
+    subtitle = "Some industries have much higher shares of positive recommendations",
+    x = "Sector",
+    y = "Proportion of Reviews",
+    fill = "Recommendation"
+  )
+```
+
+### Explanation
+The share of positive and negative recommendations differs across sectors. Some
+sectors have relatively balanced outcomes, while others are dominated by 
+negative recommendations. This reinforces the earlier finding that industry 
+matters and suggests that workplace satisfaction is not evenly distributed 
+across the economy.
+
+# 9. Average Overall Rating By Year
+```{r}
+df$rating_date <- as.Date(df$rating_date)
+df$rating_year <- as.numeric(format(df$rating_date, "%Y"))
+
+yearly_avg <- df %>%
+  group_by(rating_year) %>%
+  summarise(avg_rating = mean(rating_overall, na.rm = TRUE), .groups = "drop")
+
+ggplot(yearly_avg, aes(x = rating_year, y = avg_rating)) +
+  geom_line(color = "#C44E52", linewidth = 1) +
+  geom_point(color = "#C44E52", size = 2.5) +
+  scale_x_continuous(breaks = yearly_avg$rating_year) +
+  labs(
+    title = "Average Overall Rating by Year",
+    subtitle = "Employee ratings change over time rather than remaining constant",
+    x = "Year",
+    y = "Average Overall Rating"
+  )
+```
+
+### Explanation
+Average ratings show a noticeable time trend rather than staying constant across
+years. The pattern suggests that employee sentiment changes over time, possibly reflecting shifts in workplace policies, labor-market conditions, or broader 
+economic and social events.
+
+# 10. COVID Impact Analysis
+```{r}
+ggplot(df, aes(x = factor(covid_related_review), y = rating_overall, fill = factor(covid_related_review))) +
+  geom_boxplot(show.legend = FALSE, alpha = 0.8) +
+  scale_fill_manual(values = c("0" = "#999999", "1" = "#4C72B0")) +
+  scale_x_discrete(labels = c("0" = "Non-COVID", "1" = "COVID-Related")) +
+  labs(
+    title = "Overall Rating: COVID-Related vs Non-COVID Reviews",
+    subtitle = "Pandemic-related reviews can be compared directly to the rest of the sample",
+    x = "Review Type",
+    y = "Overall Rating"
+  )
+```
+
+### Explanation
+Comparing COVID-related reviews with non-COVID reviews helps show whether the 
+pandemic period was associated with different employee experiences. Both have a
+median rating of approximately 2, indicating generally low employee satisfaction
+across the dataset. This suggests that the pandemic did not significantly change
+overall employee sentiment in this dataset, and that negative experiences were
+already common before COVID.
+
+# 11. Employee Length vs. Rating
+```{r}
+ggplot(df, aes(x = employee_length, y = rating_overall)) +
+  geom_jitter(width = 0.2, height = 0.15, alpha = 0.25, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "darkred", linewidth = 1) +
+  labs(
+    title = "Employee Tenure vs Overall Rating",
+    subtitle = "The relationship appears weak overall",
+    x = "Employee Length (Years)",
+    y = "Overall Rating"
+  )
+```
+
+### Explanation
+The relationship between tenure and overall rating appears weak. Although there
+may be slight changes across different lengths of employment, employee 
+satisfaction does not seem to be strongly determined by how long someone stayed
+at the company. This suggests that other factors, such as culture, management, 
+or compensation, may matter more than tenure alone.
+
+# 12. Top Companies By Rating
+```{r}
+top_companies <- df %>%
+  group_by(company_name) %>%
+  summarise(
+    avg_rating = mean(rating_overall, na.rm = TRUE),
+    n_reviews = n(),
+    .groups = "drop"
+  ) %>%
+  filter(n_reviews >= 5) %>%
+  arrange(desc(avg_rating)) %>%
+  slice_head(n = 10)
+
+ggplot(top_companies,
+       aes(x = reorder(company_name, avg_rating), y = avg_rating)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top Companies by Average Rating",
+    subtitle = "Among companies with at least 5 reviews",
+    x = "Company",
+    y = "Average Rating"
+  )
+```
+
+### Explanation
+The highest-rated companies in the filtered chart represent organizations with
+both strong average ratings and a minimum number of reviews. Requiring multiple
+reviews makes the comparison more reliable, since companies with only one or two reviews can appear artificially strong. This plot highlights companies that 
+stand out more credibly in employee satisfaction.
+
+# 13. Boxplot On Ratings By Employee Status
+```{r}
+status_plot_df <- df %>%
+  mutate(
+    employee_status = trimws(as.character(employee_status)),
+    employee_status = ifelse(employee_status == "" | is.na(employee_status),
+                             NA, employee_status)
+  ) %>%
+  filter(!is.na(employee_status))
+
+ggplot(status_plot_df,
+       aes(x = fct_reorder(employee_status, rating_overall, .fun = median),
+           y = rating_overall)) +
+  geom_boxplot(fill = "skyblue", alpha = 0.85, outlier.alpha = 0.35) +
+  coord_flip() +
+  labs(
+    title = "Overall Rating by Employee Status",
+    subtitle = "Blank or missing employee-status values were removed",
+    x = "Employee Status",
+    y = "Overall Rating"
+  )
+```
+
+### Explanation
+Interns report slightly higher satisfaction, while contract employees report 
+somewhat lower ratings. However, the large overlap across groups suggests that 
+employee status is not a major factor in determining overall ratings. The 
+freelance category has very few observations and is not reliable.
