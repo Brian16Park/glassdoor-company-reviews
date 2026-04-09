@@ -1,0 +1,427 @@
+---
+title: "modeling-mahin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+```
+
+```{r}
+library(here)
+data <- read.csv(here("data", "processed", "reviews_with_sent_scores.csv"))
+```
+
+
+# Checking imbalance in response variables
+
+```{r}
+table(data$flags_recommend_frend)
+prop.table(table(data$flags_recommend_frend))
+```
+```{r}
+table(data$rating_overall)
+prop.table(table(data$rating_overall))
+```
+```{r}
+table(data$employee_length)
+summary(data$employee_length)
+```
+Employee length seems to be a good candidate to bin into ordinal categories, ie. short, medium, long.
+
+```{r}
+
+data <- data %>%
+  mutate(
+    employee_length_bin = case_when(
+      employee_length <= 1 ~ "short",
+      employee_length < 4 ~ "medium",
+      TRUE ~ "long"
+    ),
+    employee_length_bin = factor(
+      employee_length_bin,
+      levels = c("short", "medium", "long"),
+      ordered = TRUE
+    ))
+table(data$employee_length_bin)
+```
+
+
+```{r}
+data$sent_vader_avg <- rowMeans(
+  data[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  na.rm = TRUE
+)
+
+data$sent_vader_sd <- apply(
+  data[, c("vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound")],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+data$sent_distilbert_avg <- rowMeans(
+  data[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+data$sent_distilbert_sd <- apply(
+  data[, c("distilbert_summary_signed",
+         "distilbert_pros_signed",
+         "distilbert_cons_signed",
+         "distilbert_advice_signed")],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+data$sent_roberta_avg <- rowMeans(
+  data[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+data$sent_roberta_sd <- apply(
+  data[, c(    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed")],
+  1,
+  sd,
+  na.rm = TRUE
+)
+```
+
+
+```{r}
+# =========================
+# 1) Core structured features
+# =========================
+
+features_base <- c(
+  # Ratings
+  "rating_culture_values",
+  "rating_work_life",
+  "rating_career_opportunities",
+  "rating_compensation_benefits",
+  "rating_senior_leadership",
+  "rating_diversity_inclusion",
+  
+  # Context
+  "employee_job_quit",
+  "covid_related_review",
+  "rating_year",
+  
+  # Missingness
+  "career_missing",
+  
+  # Engagement
+  "helpfulness_score",
+  
+  # Text structure
+  "summary_wc",
+  "pros_wc",
+  "cons_wc",
+  "advice_wc"
+)
+
+# =========================
+# 2) Sentiment feature sets by model
+# =========================
+# avg = overall tone across summary/pros/cons/advice
+# sd  = disagreement / variation across review sections
+
+features_vader <- c(
+  features_base,
+  "sent_vader_avg",
+  "sent_vader_sd"
+)
+
+features_distilbert <- c(
+  features_base,
+  "sent_distilbert_avg",
+  "sent_distilbert_sd"
+)
+
+features_roberta <- c(
+  features_base,
+  "sent_roberta_avg",
+  "sent_roberta_sd"
+)
+
+feature_sets_avg_only <- list(
+  structured_only = features_base,
+  vader = c(features_base, "sent_vader_avg"),
+  distilbert = c(features_base, "sent_distilbert_avg"),
+  roberta = c(features_base, "sent_roberta_avg")
+)
+
+# =========================
+# 3) Optional baseline without sentiment
+# =========================
+# Use this to test whether sentiment adds predictive value at all
+
+features_structured_only <- features_base
+
+# =========================
+# 4) Bundle all feature sets for looping
+# =========================
+
+feature_sets <- list(
+  structured_only = features_structured_only,
+  vader = features_vader,
+  distilbert = features_distilbert,
+  roberta = features_roberta
+)
+
+
+```
+
+# Baseline  vs Sentiment modeling
+
+```{r}
+library(dplyr)
+
+df_model <- data %>%
+  rename(flags_recommend_friend = flags_recommend_frend) %>%   # fix typo in original column name
+  mutate(
+    # binary classification target
+    flags_recommend_friend = factor(
+      flags_recommend_friend,
+      levels = c("NEGATIVE", "POSITIVE")
+    ),
+    
+    # ordinal target
+    length_bin = ordered(
+      length_bin,
+      levels = c("short", "medium", "long")
+    ),
+    
+    # convert logical predictors to numeric 0/1 for modeling
+    employee_job_quit = as.integer(employee_job_quit),
+    career_missing = as.integer(career_missing),
+    covid_related_review = as.integer(covid_related_review)
+  )
+```
+
+```{r}
+df_reg <- df_model %>%
+  filter(!is.na(rating_overall))
+
+df_bin <- df_model %>%
+  filter(!is.na(flags_recommend_friend))
+
+df_ord <- df_model %>%
+  filter(!is.na(length_bin))
+```
+
+
+# Training each model
+
+```{r}
+library(caret)
+set.seed(123)
+
+# Regression
+idx_reg <- createDataPartition(df_reg$rating_overall, p = 0.8, list = FALSE)
+train_reg <- df_reg[idx_reg, ]
+test_reg  <- df_reg[-idx_reg, ]
+
+# Binary classification
+idx_bin <- createDataPartition(df_bin$flags_recommend_friend, p = 0.8, list = FALSE)
+train_bin <- df_bin[idx_bin, ]
+test_bin  <- df_bin[-idx_bin, ]
+
+# Ordinal
+idx_ord <- createDataPartition(df_ord$length_bin, p = 0.8, list = FALSE)
+train_ord <- df_ord[idx_ord, ]
+test_ord  <- df_ord[-idx_ord, ]
+```
+
+# Basic Linear Model Fitting on rating_overall
+```{r}
+results_list <- list()
+
+for (name in names(feature_sets)) {
+  
+  features <- feature_sets[[name]]
+  
+  # Fit model
+  model <- lm(
+    rating_overall ~ .,
+    data = train_reg[, c("rating_overall", features)]
+  )
+  
+  # Predictions
+  preds <- predict(model, newdata = test_reg)
+  
+  # RMSE
+  rmse <- sqrt(mean((test_reg$rating_overall - preds)^2))
+  
+  # Extract coefficients
+  coef_df <- as.data.frame(summary(model)$coefficients)
+  coef_df$feature <- rownames(coef_df)
+  coef_df <- coef_df[coef_df$feature != "(Intercept)", ]
+  
+  # sort by absolute effect
+  coef_df <- coef_df[order(-abs(coef_df$Estimate)), ]
+  
+  # take top 5 features
+  top_features <- head(coef_df$feature, 5)
+  
+  # collapse into a string
+  top_features_str <- paste(top_features, collapse = ", ")
+  
+  # store results
+  results_list[[name]] <- data.frame(
+    model = name,
+    RMSE = rmse,
+    top_features = top_features_str
+  )
+}
+
+results_reg <- do.call(rbind, results_list)
+results_reg <- results_reg[order(results_reg$RMSE), ]
+results_reg <- data.frame(results_reg, row.names = NULL)
+
+results_reg
+```
+Across all models, senior leadership and company culture consistently emerged as the strongest predictors of overall ratings. 
+
+The inclusion of sentiment features improved predictive performance modestly, with VADER achieving the lowest RMSE. This is surprising because transformers are generally better at sentiment inference than the simpler lexicon-based method.  Maybe this can be explained because of the generally short average word counts across all text-fields.
+
+The same structured variables remained dominant even when sentiment features were added, indicating that sentiment provides complementary rather than substitutive information.
+
+
+# Recommend Friend Baseline Classification
+
+```{r}
+library(pROC)
+library(caret)
+
+results_bin_list <- list()
+
+for (name in names(feature_sets)) {
+  
+  features <- feature_sets[[name]]
+  
+  # Fit logistic model
+  model <- glm(
+    flags_recommend_friend ~ .,
+    data = train_bin[, c("flags_recommend_friend", features)],
+    family = "binomial"
+  )
+  
+  # Predict probabilities
+  probs <- predict(model, newdata = test_bin, type = "response")
+  
+  # Convert to class (threshold = 0.5)
+  preds <- ifelse(probs > 0.5, "POSITIVE", "NEGATIVE")
+  preds <- factor(preds, levels = c("NEGATIVE", "POSITIVE"))
+  
+  # Accuracy
+  acc <- mean(preds == test_bin$flags_recommend_friend)
+  
+  # AUC
+  auc <- roc(
+    response = test_bin$flags_recommend_friend,
+    predictor = probs,
+    levels = c("NEGATIVE", "POSITIVE")
+  )$auc
+  
+  # Store
+  results_bin_list[[name]] <- data.frame(
+    model = name,
+    AUC = as.numeric(auc),
+    Accuracy = acc
+  )
+  
+  # Extract coefficients
+  coef_df <- as.data.frame(summary(model)$coefficients)
+  coef_df$feature <- rownames(coef_df)
+  coef_df <- coef_df[coef_df$feature != "(Intercept)", ]
+  
+  # sort
+  coef_df <- coef_df[order(-abs(coef_df$Estimate)), ]
+  
+  # top 5 with sign
+  top_features <- head(
+    paste0(
+      coef_df$feature,
+      " (", round(coef_df$Estimate, 2), ")"
+    ),
+    5
+  )
+  
+  top_features_str <- paste(top_features, collapse = ", ")
+}
+
+
+
+results_bin <- do.call(rbind, results_bin_list)
+rownames(results_bin) <- NULL
+
+results_bin[order(-results_bin$AUC), ]
+```
+Structured workplace ratings alone are sufficient to predict recommendation behavior with very high accuracy. 
+The addition of sentiment features provides only marginal improvements in AUC and does not improve classification accuracy.
+
+We prioritize AUC over accuracy as the primary evaluation metric because AUC evaluates the model’s ability to correctly rank positive and negative instances across all classification thresholds, whereas accuracy depends on a fixed threshold (0.5) and can be misleading, especially in imbalanced datasets.
+
+
+# Employee Length
+```{r}
+library(MASS)
+
+results_ord_list <- list()
+
+for (name in names(feature_sets)) {
+  
+  features <- feature_sets[[name]]
+  
+  model <- polr(
+    length_bin ~ .,
+    data = train_ord[, c("length_bin", features)],
+    Hess = TRUE
+  )
+  
+  # Predictions
+  preds <- predict(model, newdata = test_ord)
+  
+  # Accuracy
+  acc <- mean(as.character(preds) == as.character(test_ord$length_bin))
+  
+  results_ord_list[[name]] <- data.frame(
+    model = name,
+    Accuracy = acc
+  )
+}
+
+results_ord <- do.call(rbind, results_ord_list)
+rownames(results_ord) <- NULL
+
+results_ord[order(-results_ord$Accuracy), ]
+```
+Prediction of employee length proved more challenging than other tasks, with model accuracy ranging from 0.43 to 0.46. However, all models outperformed the random baseline of approximately 0.33. 
+Sentiment features provided modest improvements over structured features alone, with DistilBERT achieving the best performance. This suggests that more nuanced language representations may better capture signals related to employee tenure.
+
+
+# Overall Picture
+
+Sentiment plays a more meaningful role in predicting continuous satisfaction and tenure-related outcomes than in predicting recommendation behavior, where structured ratings already capture most of the signal.
