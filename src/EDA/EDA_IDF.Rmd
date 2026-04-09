@@ -1,4 +1,4 @@
-```{r}
+```{r, message = F, warning = F}
 if (!requireNamespace("pacman", quietly = TRUE)) {
   install.packages("pacman")
 }
@@ -21,7 +21,7 @@ p_load(RColorBrewer)
 # 1. Data Preparation
 # ---------------------------------------------------------
 
-df <- read_csv("data/processed/glassdoor_reviews_cleaned.csv")
+df <- read_csv("../../data/processed/glassdoor_reviews_cleaned.csv")
 
 cols <- c('summary', 'advice_to_management', 'review_pros', 'review_cons')
 encode_cols <- c('covid_related_review', 'flags_business_outlook', 'flags_ceo_approval',
@@ -157,39 +157,39 @@ print(colnames(X_train_processed)[1:30])
 library(tidyverse)
 library(tidytext)
 
-# 定义清理函数
+# clean function
 clean_words <- function(data, column_name) {
   
-  # 1. 转换数据为 Tidy 格式 (Tokenization & Cleaning)
-  # unnest_tokens 会自动帮你：转小写、去标点
+  # 1. convert to tidy (Tokenization & Cleaning)
+  # unnest_tokens will transfer to lowercase and delete non-letter chars
   tidy_text <- data %>%
     select(all_of(column_name)) %>%
     unnest_tokens(word, !!sym(column_name))
   
-  # 原始总词数 (去重前)
+  # total words
   wa <- tidy_text %>% distinct(word) %>% nrow()
   
-  # 2. 过滤停用词 和 低频词
-  # custom_stopwords 是我们在前几步定义的向量
+  # 2. filter stopwords and low frequency
+  # custom_stopwords is defined before
   cleaned_text <- tidy_text %>%
     filter(!word %in% custom_stopwords) %>%
     group_by(word) %>%
-    filter(n() >= 5) %>% # 过滤出现次数少于 5 次的词
+    filter(n() >= 5) %>% # drop words less than 5 times
     ungroup()
   
-  # 过滤后的总词数
+  # word number after filter
   wb <- cleaned_text %>% distinct(word) %>% nrow()
   
-  # 打印统计信息
+  # print the statistics
   cat(sprintf("%s original words: %d  stopword and lowfreq removed: %d\n", 
               column_name, wa, wb))
   
-  # 3. 计算频率并取前 20 名
+  # 3. calculate the top 20
   word_counts <- cleaned_text %>%
     count(word, sort = TRUE) %>%
     slice_head(n = 20)
   
-  # 4. 可视化 (ggplot2 对应 plt.bar)
+  # 4. visualization
   p <- ggplot(word_counts, aes(x = reorder(word, -n), y = n)) +
     geom_col(fill = "steelblue") +
     labs(title = paste("Top Word Frequencies of", column_name),
@@ -199,15 +199,13 @@ clean_words <- function(data, column_name) {
   
   print(p)
   
-  # 返回完整的词频表 (等同于 Python 的 wordfreq)
+  # return complete word frequency
   full_counts <- cleaned_text %>%
     count(word, sort = TRUE)
   
   return(full_counts)
 }
 
-# 循环处理所有列
-# 这里我们用 map 或者简单的循环
 results <- list()
 for (col in cols) {
   results[[col]] <- clean_words(df, col)
