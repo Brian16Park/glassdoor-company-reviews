@@ -268,8 +268,7 @@ Regularization is cooking without the stove on. MSE barely changes across lambda
 # Ordinal Regression (polr) for employee_length
 ```{r}
 run_tenure_ordinal <- function(df, feature_cols, target = "length_bin", seed = 123) {
-  df_model <- data %>%
-  dplyr::select(employee_length_bin, all_of(features_base))
+  df_model <- df %>% dplyr::select(all_of(c(target, feature_cols)))
   
   split_obj <- split_data(df_model, target, seed = seed)
   train_df <- split_obj$train
@@ -323,8 +322,8 @@ Does NLP on the text fields help?
 
 ```{r}
 run_recommend_logit <- function(df, feature_cols, target = "flags_recommend_frend", seed = 123) {
-  df_model <- data %>%
-  dplyr::select(flags_recommend_frend, all_of(features_base))
+  df_model <- df %>%
+    dplyr::select(all_of(c(target, feature_cols)))
 
   df_model[[target]] <- factor(df_model[[target]], levels = c("NEGATIVE", "POSITIVE"))
 
@@ -600,8 +599,340 @@ Regularization barely changed performance. Saving LASSO for sentiment add-on lat
 #saveRDS(tenure_ord_results, "models/employee_length_bin_model.rds")
 ```
 
+# Does adding sentiment features help?
+
+```{r}
+data$sent_vader_avg <- rowMeans(
+  data[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  na.rm = TRUE
+)
+
+data$sent_vader_sd <- apply(
+  data[, c("vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound")],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+data$sent_distilbert_avg <- rowMeans(
+  data[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+data$sent_distilbert_sd <- apply(
+  data[, c("distilbert_summary_signed",
+         "distilbert_pros_signed",
+         "distilbert_cons_signed",
+         "distilbert_advice_signed")],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+data$sent_roberta_avg <- rowMeans(
+  data[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+data$sent_roberta_sd <- apply(
+  data[, c(    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed")],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+features_vader <- c(
+  features_base,
+  "sent_vader_avg",
+  "sent_vader_sd"
+)
+
+features_distilbert <- c(
+  features_base,
+  "sent_distilbert_avg",
+  "sent_distilbert_sd"
+)
+
+features_roberta <- c(
+  features_base,
+  "sent_roberta_avg",
+  "sent_roberta_sd"
+)
+
+feature_sets_avg_only <- list(
+  structured_only = features_base,
+  vader = c(features_base, "sent_vader_avg"),
+  distilbert = c(features_base, "sent_distilbert_avg"),
+  roberta = c(features_base, "sent_roberta_avg")
+)
+
+
+base_only <- features_base
+
+feature_sets <- list(
+  baseline = base_only,
+  vader = features_vader,
+  distilbert = features_distilbert,
+  roberta = features_roberta
+)
+
+```
+
+## Employee Length model Comparison Baseline vs Sentiment-add-on
+
+```{r}
+tenure_ord_compare <- lapply(names(feature_sets), function(name) {
+  feats <- feature_sets[[name]]
+  
+  res <- run_tenure_ordinal(
+    df = data,
+    feature_cols = feats,
+    target = "employee_length_bin"
+  )
+  
+  data.frame(
+    model = name,
+    accuracy = res$accuracy
+  )
+})
+
+tenure_ord_compare_df <- do.call(rbind, tenure_ord_compare)
+tenure_ord_compare_df
+```
+
+While sentiment features slightly improve tenure prediction accuracy, the overall performance remains low, indicating that employee tenure is only weakly associated with both structured workplace ratings and textual sentiment.
+
+RoBERTa underperformed relative to both the baseline and other sentiment models. While truncation during inference may contribute to information loss, the more likely cause is domain mismatch, as the model was trained on short-form social media text rather than longer, structured employee reviews.
+
+## Recommendation Model Comparison: Baseline vs Sentiment-add-on
+
+```{r}
+recommend_glmnet_compare <- lapply(names(feature_sets), function(name) {
+  
+  feats <- feature_sets[[name]]
+  
+  res <- run_glmnet_logit(
+    df = data,
+    feature_cols = feats,
+    target = "flags_recommend_frend",
+    alpha = 1
+  )
+  
+  data.frame(
+    model = name,
+    auc = res$auc,
+    accuracy = res$accuracy
+  )
+})
+
+recommend_glmnet_compare_df <- do.call(rbind, recommend_glmnet_compare)
+recommend_glmnet_compare_df
+
+```
+Recommendation outcomes are highly predictable, with AUC values exceeding 0.91 across all models. This indicates that structured workplace features, such as ratings, already capture most of the signal underlying recommendation decisions.
+
+While the inclusion of sentiment features led to modest improvements—most notably with VADER, which achieved the highest AUC—these gains were relatively small. This suggests that textual sentiment provides limited additional information beyond structured ratings.
+
+Overall, the results indicate that employee recommendation decisions are largely aligned with structured evaluations, and that sentiment extracted from review text offers only marginal incremental predictive value.
+
+## Best Features from LASSO VADER model
+
+```{r}
+best_recommend_lasso <- run_glmnet_logit(
+  df = data,
+  feature_cols = feature_sets[["vader"]],
+  target = "flags_recommend_frend",
+  alpha = 1
+)
+
+best_recommend_lasso$coefficients
+```
+
+LASSO regularization revealed that structured rating variables—particularly senior leadership, culture, and career opportunities—are the primary drivers of recommendation outcomes. 
+
+Interestingly, the average VADER sentiment score remained one of the strongest predictors, indicating that textual sentiment contributes additional predictive signal beyond structured ratings.
+
+Text-based features such as the word counts of pros and cons sections also played a meaningful role, with longer positive sections increasing the likelihood of recommendation and longer negative sections decreasing it.
+
+Overall, while structured ratings dominate prediction, sentiment and textual characteristics provide complementary information.
 
 # Cluster Chaos
 
 Clustering Prep for review-level clustering, company-level would be (was) too weak
 
+For selecting features to cluster on, avoid selecting response variables and selecting all predictors is generally not a good idea (can degrade clustering performance due to curse of dimensionality). 
+
+Select only vader_avg for sentiment because it was among the top performing features in the previous supervised models.
+
+```{r}
+cluster_structured <- c(
+  "rating_culture_values",
+  "rating_work_life",
+  "rating_career_opportunities",
+  "rating_compensation_benefits",
+  "rating_senior_leadership",
+  "rating_diversity_inclusion"
+)
+
+cluster_features <- c(
+  cluster_structured,
+  "sent_vader_avg",
+  "pros_wc",
+  "cons_wc",
+  "helpfulness_score"
+)
+```
+
+Scaling clusters
+```{r}
+cluster_df <- data %>%
+  dplyr::select(all_of(cluster_features)) %>%
+  na.omit()
+
+cluster_scaled <- scale(cluster_df)
+apply(cluster_scaled, 2, mean)
+apply(cluster_scaled, 2, sd)
+```
+
+After selecting the clustering variables, a review-level clustering dataset is created. 
+All selected variables are standardized prior to clustering so that each feature can be comparably used in Euclidean distance calculations. This step is important because the variables operate on different scales, including ratings, word counts, helpfulness, and sentiment.
+
+Standardization went well looking at cluster_scaled
+
+## Choosing K (number of clusters)
+
+### Elbow Method
+```{r}
+set.seed(123)
+
+wss <- sapply(1:10, function(k) {
+  kmeans(cluster_scaled, centers = k, nstart = 25)$tot.withinss
+})
+
+plot(1:10, wss,
+     type = "b",
+     pch = 19,
+     xlab = "Number of Clusters (k)",
+     ylab = "Total Within-Cluster Sum of Squares",
+     main = "Elbow Method")
+```
+Candidate elbow points are 2, 3, 4. Let's try silhouette method to lock-in the k
+
+### Silhouette Method
+
+```{r}
+library(cluster)
+
+sil_scores <- sapply(2:10, function(k) {
+  km <- kmeans(cluster_scaled, centers = k, nstart = 25)
+  ss <- silhouette(km$cluster, dist(cluster_scaled))
+  mean(ss[, 3])
+})
+
+plot(2:10, sil_scores,
+     type = "b",
+     pch = 19,
+     xlab = "Number of Clusters (k)",
+     ylab = "Average Silhouette Width",
+     main = "Silhouette Method")
+```
+The silhouette method indicated that k = 2 provides the strongest cluster separation. However, k = 3 was selected to capture more nuanced structure in the data, as it still maintains reasonable separation while allowing differentiation between positive, mixed, and negative workplace experiences. This aligns better with the goals of the analysis.
+
+### K-Means attempt
+
+```{r}
+set.seed(123)
+
+kmeans_model <- kmeans(cluster_scaled, centers = 3, nstart = 25)
+
+cluster_df$cluster <- factor(kmeans_model$cluster)
+
+set.seed(123)
+
+kmeans_model <- kmeans(cluster_scaled, centers = 3, nstart = 25)
+
+cluster_df$cluster <- factor(kmeans_model$cluster)
+
+cluster_summary <- cluster_df %>%
+  dplyr::group_by(cluster) %>%
+  dplyr::summarise(across(everything(), mean))
+
+cluster_summary
+```
+
+```{r}
+cluster_scaled_summary <- cluster_summary %>%
+  mutate(across(-cluster, scale))
+
+cluster_long <- cluster_scaled_summary %>%
+  pivot_longer(-cluster, names_to = "feature", values_to = "value")
+
+ggplot(cluster_long, aes(x = feature, y = value, fill = cluster)) +
+  geom_col(position = "dodge") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Cluster Profiles (Standardized)",
+    x = "Feature",
+    y = "Standardized Value"
+  )
+```
+Cluster 1 (High Satisfaction):
+Above-average ratings across all dimensions, positive sentiment, and more pros than cons. Represents clearly satisfied employees.
+
+Cluster 2 (Disengaged Negative):
+Below-average ratings and sentiment, with low pros and moderate cons. Reflects generally dissatisfied but less engaged reviewers.
+
+Cluster 3 (Engaged Critics):
+Below-average ratings and sentiment, but high pros, cons, and helpfulness. Indicates dissatisfied yet highly engaged reviewers providing detailed feedback.
+
+
+```{r}
+pca_res <- prcomp(cluster_scaled, center = FALSE, scale. = FALSE)
+pca_df <- as.data.frame(pca_res$x)
+
+pca_df$cluster <- cluster_df$cluster
+
+summary(pca_res)
+```
+
+```{r}
+ggplot(pca_df, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(alpha = 0.6, size = 2) +
+  labs(
+    title = "PCA Visualization of Clusters",
+    x = "Principal Component 1",
+    y = "Principal Component 2"
+  ) +
+  theme_minimal() + stat_summary(
+    fun = mean,
+    geom = "point",
+    size = 5,
+    shape = 8,
+    aes(group = cluster)
+)
+```
+Principal Component Analysis revealed that the first component explains approximately 42.6% of the variance and primarily captures overall workplace quality, separating high-rated environments from low-rated ones. The second component explains an additional 14.1% of the variance and differentiates between types of negative experiences.
+
+Specifically, it separates uniformly poor workplace environments from those that offer relatively stronger career opportunities despite low ratings in culture and leadership. The PCA visualization supports the clustering results by showing clear separation between high-satisfaction reviews and more nuanced overlap among lower-rated groups.
