@@ -1,0 +1,215 @@
+```{r, message = F, warning = F}
+if (!requireNamespace("pacman", quietly = TRUE)) {
+  install.packages("pacman")
+}
+library(pacman)
+
+# Load necessary libraries
+p_load(caret)
+p_load(tidyverse)
+p_load(tidymodels)
+p_load(tidytext)
+p_load(textrecipes)
+p_load(Matrix)
+p_load(wordcloud)
+p_load(tm)
+
+p_load(stopwords)
+p_load(RColorBrewer)
+
+# ---------------------------------------------------------
+# 1. Data Preparation
+# ---------------------------------------------------------
+
+df <- read_csv("../../data/processed/glassdoor_reviews_cleaned.csv")
+
+cols <- c('summary', 'advice_to_management', 'review_pros', 'review_cons')
+encode_cols <- c('covid_related_review', 'flags_business_outlook', 'flags_ceo_approval',
+                 'flags_recommend_frend', 'rating_culture_values',
+                 'rating_diversity_inclusion', 'rating_overall', 'rating_work_life',
+                 'rating_compensation_benefits', 'rating_senior_leadership',
+                 'rating_career_opportunities',
+                 'has_review_text')
+df <- df %>%
+  mutate(across(all_of(cols), ~replace_na(., "")))
+# Define the columns
+
+
+
+# 1. Define custom stopwords
+# Equivalent to STOPWORDS.union(set([...]))
+custom_stopwords <- c(stopwords("english"), 
+                      "bad", "good", "great", "will", "company", 
+                      "job", "work", "employee", "here", 
+                      "people", "employees")
+
+# 2. Define the plotting function
+plotWordCloudFromDF <- function(df, column_name) {
+  
+  # Extract text and collapse into one large string
+  text_data <- paste(df[[column_name]], collapse = " ")
+  
+  # Create a Corpus and clean the text
+  docs <- Corpus(VectorSource(text_data))
+  docs <- docs %>%
+    tm_map(content_transformer(tolower)) %>%
+    tm_map(removePunctuation) %>%
+    tm_map(removeNumbers) %>%
+    tm_map(removeWords, custom_stopwords) %>%
+    tm_map(stripWhitespace)
+  
+  # Generate the Word Cloud
+  cat(paste0("Generating word cloud for: ", column_name, "\n"))
+  wordcloud(words = docs, 
+            max.words = 300, 
+            random.order = FALSE, 
+            rot.per = 0.35,            # Rotation percentage
+            colors = brewer.pal(8, "Dark2"),
+            scale = c(3, 0.5))        # Range of font sizes
+}
+
+# 3. Loop through columns
+
+for (col in cols) {
+  plotWordCloudFromDF(df, col)
+}
+
+```
+
+```{r}
+# Split Data (equivalent to train_test_split)
+set.seed(42)
+df2 = df %>%
+  subset(select = -c(rating_date, employee_status, company_name, 
+  employee_location, employee_job_title, sector,
+  review_id))
+
+
+# Build the Preprocessing Recipe (Equivalent to ColumnTransformer + TfidfVectorizer)
+rec <- recipe(employee_length + employee_job_quit ~ ., data = df2)  %>%
+  step_mutate(across(all_of(encode_cols), as.factor)) %>%
+  # Handle Numeric/Categorical preprocessing
+  step_novel(all_of(encode_cols)) %>% 
+  step_dummy(all_of(encode_cols), one_hot = TRUE) %>%
+  
+  # Text Processing for 'summary' (max_features = 200)
+  step_tokenize(summary) %>%
+  step_stopwords(summary) %>%
+  step_ngram(summary, min_num_tokens = 1, num_tokens = 3) %>%
+  step_tokenfilter(summary, max_tokens = 200, min_times = 5) %>%
+  step_tfidf(summary, prefix = "summary__") %>%
+  
+  # Text Processing for 'advice_to_management' (max_features = 200)
+  step_tokenize(advice_to_management) %>%
+  step_stopwords(advice_to_management) %>%
+  step_ngram(advice_to_management, min_num_tokens = 1, num_tokens = 3) %>%
+  step_tokenfilter(advice_to_management, max_tokens = 200, min_times = 5) %>%
+  step_tfidf(advice_to_management, prefix = "advice__") %>%
+  
+  # Text Processing for 'review_pros' (max_features = 300)
+  step_tokenize(review_pros) %>%
+  step_stopwords(review_pros) %>%
+  step_ngram(review_pros, min_num_tokens = 1, num_tokens = 3) %>%
+  step_tokenfilter(review_pros, max_tokens = 300, min_times = 5) %>%
+  step_tfidf(review_pros, prefix = "pros__") %>%
+  
+  # Text Processing for 'review_cons' (max_features = 400)
+  step_tokenize(review_cons) %>%
+  step_stopwords(review_cons) %>%
+  step_ngram(review_cons, min_num_tokens = 1, num_tokens = 3) %>%
+  step_tokenfilter(review_cons, max_tokens = 400, min_times = 5) %>%
+  step_tfidf(review_cons, prefix = "cons__") %>%
+  
+  # Scaling (Equivalent to MaxAbsScaler)
+  # R's step_normalize is Z-score; for MaxAbs we use a custom scaling or range
+  step_range(all_predictors(), min = -1, max = 1)
+
+
+set.seed(42)
+data_split <- df2$employee_length%>%
+  createDataPartition(p = 0.8, list = F)
+train_data <- df2[data_split, ]
+test_data  <- df2[-data_split, ]
+
+# Train the recipe on training data
+prep_rec <- prep(rec, training = train_data)
+
+# Transform the datasets (Equivalent to fit_transform / transform)
+X_train_processed <- bake(prep_rec, new_data = NULL, all_predictors(), composition = "dgCMatrix")
+X_test_processed  <- bake(prep_rec, new_data = test_data, all_predictors(), composition = "dgCMatrix")
+
+# Target vectors
+yl_train <- train_data$employee_length
+yq_train <- as.integer(train_data$employee_job_quit)
+
+# --- Data Structural Audit ---
+cat("--- Data Structural Audit ---\n")
+cat(sprintf("Total Combined Features: %d\n", ncol(X_train_processed)))
+cat(sprintf("Total Samples: %d\n", nrow(X_train_processed)))
+cat("First 30 Feature Names (Sample):\n")
+print(colnames(X_train_processed)[1:30])
+
+```
+
+
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+# clean function
+clean_words <- function(data, column_name) {
+  
+  # 1. convert to tidy (Tokenization & Cleaning)
+  # unnest_tokens will transfer to lowercase and delete non-letter chars
+  tidy_text <- data %>%
+    select(all_of(column_name)) %>%
+    unnest_tokens(word, !!sym(column_name))
+  
+  # total words
+  wa <- tidy_text %>% distinct(word) %>% nrow()
+  
+  # 2. filter stopwords and low frequency
+  # custom_stopwords is defined before
+  cleaned_text <- tidy_text %>%
+    filter(!word %in% custom_stopwords) %>%
+    group_by(word) %>%
+    filter(n() >= 5) %>% # drop words less than 5 times
+    ungroup()
+  
+  # word number after filter
+  wb <- cleaned_text %>% distinct(word) %>% nrow()
+  
+  # print the statistics
+  cat(sprintf("%s original words: %d  stopword and lowfreq removed: %d\n", 
+              column_name, wa, wb))
+  
+  # 3. calculate the top 20
+  word_counts <- cleaned_text %>%
+    count(word, sort = TRUE) %>%
+    slice_head(n = 20)
+  
+  # 4. visualization
+  p <- ggplot(word_counts, aes(x = reorder(word, -n), y = n)) +
+    geom_col(fill = "steelblue") +
+    labs(title = paste("Top Word Frequencies of", column_name),
+         x = "Words", y = "Frequency") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  print(p)
+  
+  # return complete word frequency
+  full_counts <- cleaned_text %>%
+    count(word, sort = TRUE)
+  
+  return(full_counts)
+}
+
+results <- list()
+for (col in cols) {
+  results[[col]] <- clean_words(df, col)
+}
+```
+
+

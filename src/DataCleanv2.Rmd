@@ -7,6 +7,7 @@ output:
     number_sections: true
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -150,8 +151,19 @@ df_clean <- df_clean %>%
   ungroup()
 ```
 
+# Flag missing rating_career_opportunities
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    career_missing = is.na(rating_career_opportunities)
+  )
+```
+
+
 ```{r}
 sum(is.na(df_clean$rating_diversity_inclusion))
+sum(is.na(df_clean$rating_career_opportunities))
+table(df_clean$career_missing, df_clean$flags_recommend_frend)
 ```
 
 # Median imputation for other numeric columns
@@ -162,14 +174,57 @@ df_clean <- df_clean %>%
       is.na(employee_length),
       median(employee_length, na.rm = TRUE),
       employee_length
-    ),
+    ))
+```    
+    ,
     rating_career_opportunities = ifelse(
       is.na(rating_career_opportunities),
       median(rating_career_opportunities, na.rm = TRUE),
       rating_career_opportunities
     )
   )
+
+# Imputing missing rating_career_opportunities by company median, with sector and global fallbacks
+```{r}
+df_clean <- df_clean %>%
+  group_by(company_name) %>%
+  mutate(
+    rating_career_opportunities = ifelse(
+      is.na(rating_career_opportunities),
+      median(rating_career_opportunities, na.rm = TRUE),
+      rating_career_opportunities
+    )
+  ) %>%
+  ungroup()
+
+sum(is.na(df_clean$rating_career_opportunities))
+
+df_clean <- df_clean %>%
+  group_by(sector) %>%
+  mutate(
+    rating_career_opportunities = ifelse(
+      is.na(rating_career_opportunities),
+      median(rating_career_opportunities, na.rm = TRUE),
+      rating_career_opportunities
+    )
+  ) %>%
+  ungroup()
+
+sum(is.na(df_clean$rating_career_opportunities))
+
+df_clean <- df_clean %>%
+  mutate(
+    rating_career_opportunities = ifelse(
+      is.na(rating_career_opportunities),
+      median(rating_career_opportunities, na.rm = TRUE),
+      rating_career_opportunities
+    )
+  )
+
+sum(is.na(df_clean$rating_career_opportunities))
 ```
+
+
 
 # Feature Engineering
 ```{r}
@@ -232,7 +287,7 @@ dim(df_clean)
 ```{r}
 write.csv(
   df_clean,
-  here("data", "processed", "glassdoor_reviews_cleaned.csv"),
+  here("data", "processed", "glassdoor_reviews_cleaned_v2.csv"),
   row.names = FALSE
 )
 ```
