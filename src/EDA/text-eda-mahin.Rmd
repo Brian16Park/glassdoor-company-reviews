@@ -3,8 +3,8 @@ title: "eda-text-mahin"
 author: "Mahin Roddur"
 date: "2026-04-02"
 output:
-  html_document:
-    df_print: paged
+  pdf_document: default
+  pdf: default
 ---
 
 ```{r setup, include=FALSE}
@@ -47,7 +47,7 @@ if (length(missing) > 0) {
 
 ```{r}
 library(here)
-data <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned.csv"))
+data <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned_v2.csv"))
 ```
 
 
@@ -333,12 +333,14 @@ cache_transformer_model <- function(model_name, file_stub, text_df) {
 # Uncomment ONLY if you want to recompute sentiment
 # =========================
 
-# unlink("sent_scores", recursive = TRUE)
+#unlink("sent_scores", recursive = TRUE)
 
 # or delete specific models:
 # file.remove("sent_scores/distilbert_scores.rds")
 # file.remove("sent_scores/roberta_scores.rds")
 # file.remove("sent_scores/vader_scores.rds")
+
+#dir.create("sent_scores", showWarnings = FALSE)
 ```
 
 
@@ -498,7 +500,7 @@ sent_long <- text_sentiment_df %>%
     )
   ) %>%
   transmute(
-    # 🔑 KEEP ALL META VARIABLES HERE
+    #  KEEP ALL META VARIABLES HERE
     review_id,
     employee_length,
     rating_overall,
@@ -605,11 +607,12 @@ ggplot(sent_prop, aes(x = wc_bin, y = p_positive, fill = model)) +
 
 ```{r}
 ggplot(sent_long, aes(x = employee_length, y = sentiment_scaled, color = model)) +
+  geom_point(alpha = 0.3, size = 1) +   # scatter
   geom_smooth(method = "lm", se = FALSE) +
   facet_wrap(~ column) +
   theme_minimal() +
   labs(
-    title = "Sentiment vs Employee Length (Rough interpolation due to not as many unique vals",
+    title = "Sentiment vs Employee Length",
     x = "Employee Length (years)",
     y = "Scaled Sentiment"
   )
@@ -677,6 +680,17 @@ ggplot(sent_rec_summary, aes(x = flags_recommend_frend, y = mean_sentiment, fill
   geom_col(position = "dodge") +
   facet_wrap(~ column) +
   theme_minimal()
+```
+```{r}
+
+text_sentiment_only <- text_sentiment_df %>%
+  select(review_id, contains("distilbert"), contains("roberta"), contains("vader"), contains("wc"))
+
+reviews_with_sent_scores <- data %>%
+  left_join(text_sentiment_only, by = "review_id")
+
+#write.csv(reviews_with_sent_scores, here("data", "processed", "reviews_with_sent_scores.csv"),
+#          row.names = FALSE)
 ```
 
 
