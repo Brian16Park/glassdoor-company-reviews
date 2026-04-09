@@ -159,7 +159,6 @@ df_clean <- df_clean %>%
   )
 ```
 
-
 ```{r}
 sum(is.na(df_clean$rating_diversity_inclusion))
 sum(is.na(df_clean$rating_career_opportunities))
@@ -176,13 +175,6 @@ df_clean <- df_clean %>%
       employee_length
     ))
 ```    
-    ,
-    rating_career_opportunities = ifelse(
-      is.na(rating_career_opportunities),
-      median(rating_career_opportunities, na.rm = TRUE),
-      rating_career_opportunities
-    )
-  )
 
 # Imputing missing rating_career_opportunities by company median, with sector and global fallbacks
 ```{r}
@@ -223,8 +215,6 @@ df_clean <- df_clean %>%
 
 sum(is.na(df_clean$rating_career_opportunities))
 ```
-
-
 
 # Feature Engineering
 ```{r}
@@ -280,8 +270,6 @@ df_clean <- df_clean %>%
 colSums(is.na(df_clean))
 dim(df_clean)
 ```
-
-
 
 # Saving cleaned file
 ```{r}
