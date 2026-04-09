@@ -3,8 +3,8 @@ title: "eda-text-mahin"
 author: "Mahin Roddur"
 date: "2026-04-02"
 output:
-  html_document:
-    df_print: paged
+  pdf_document: default
+  pdf: default
 ---
 
 ```{r setup, include=FALSE}
@@ -500,7 +500,7 @@ sent_long <- text_sentiment_df %>%
     )
   ) %>%
   transmute(
-    # 🔑 KEEP ALL META VARIABLES HERE
+    #  KEEP ALL META VARIABLES HERE
     review_id,
     employee_length,
     rating_overall,
@@ -689,8 +689,8 @@ text_sentiment_only <- text_sentiment_df %>%
 reviews_with_sent_scores <- data %>%
   left_join(text_sentiment_only, by = "review_id")
 
-write.csv(reviews_with_sent_scores, here("data", "processed", "reviews_with_sent_scores.csv"),
-          row.names = FALSE)
+#write.csv(reviews_with_sent_scores, here("data", "processed", "reviews_with_sent_scores.csv"),
+#          row.names = FALSE)
 ```
 
 
