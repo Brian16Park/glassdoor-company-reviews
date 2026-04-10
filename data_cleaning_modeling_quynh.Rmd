@@ -12,10 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(MASS)
 library(tidyverse)
-install.packages("lattice")
+#install.packages("lattice")
 library(lattice)
 library(caret)
-install.packages("Matrix")
+#install.packages("Matrix")
 library(Matrix)
 library(glmnet)
 library(mlbench)
@@ -25,7 +25,7 @@ library(caret)
 #Import the dataset
 ```{r}
 df <- read.csv("data/company_tagger/glassdoor_reviews_with_sector_revised.csv")
-view(df)
+#view(df)
 summary(df)
 ```
 
@@ -674,7 +674,7 @@ Threshold of 0.4 produces the highest F1 score of 0.85
 
 # Step 6: Convert Probabilities to Class Predictions using threshold of 0.4
 ```{r}
-log_pred_class <- ifelse(log_pred_prob > 0.4, "POSITIVE", "NEGATIVE")
+log_pred_class <- ifelse(log_pred_prob > best_f1, "POSITIVE", "NEGATIVE")
 
 # Convert to factor
 log_pred_class <- as.factor(log_pred_class)
@@ -685,13 +685,13 @@ log_pred_class <- as.factor(log_pred_class)
 logistic_cm <- confusionMatrix(log_pred_class, test.data$flags_recommend_frend)
 logistic_cm
 ```
-
+Logistic regression has Accuracy of 0.8776
 
 # Step 8: ROC Curve and AUC
 ```{r}
 library(pROC)
 
-log_roc_curve <- roc(log_test$flags_recommend_frend, log_pred_prob)
+log_roc_curve <- roc(test.data$flags_recommend_frend, log_pred_prob)
 plot(log_roc_curve)
 
 auc(log_roc_curve)
@@ -710,11 +710,11 @@ for (p in pkg_needed) {
   }
 }
 
-install.packages("bitops")
-install.packages("ggplot2")
-install.packages("lattice")
-install.packages("Matrix")
-install.packages("rpart.plot")
+#install.packages("bitops")
+#install.packages("ggplot2")
+#install.packages("lattice")
+#install.packages("Matrix")
+#install.packages("rpart.plot")
 library(caret)
 library(rpart)
 library(rattle)
@@ -812,8 +812,8 @@ Pruned Decision tree has AUC of 0.9056
 
 # Step 1: Import Random Forest package
 ```{r}
-install.packages("randomForest")
-install.packages("ggplot2")
+#install.packages("randomForest")
+#install.packages("ggplot2")
 library(randomForest)
 library(caret)
 ```
@@ -923,4 +923,4 @@ Random forest model has AUC of 0.9309.
 
 Due to class imbalance, decision tree predicts majority class better, which is shown by better accuracy but worse AUC compared to random forest. Accuracy is defined by a threshold and AUC is defined without threshold, so AUC is the better metric when we haven’t tuned the threshold, because of class imbalance. 
 
-(nothing)
+

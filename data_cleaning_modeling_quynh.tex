@@ -1,0 +1,2396 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Dataset\_demo},
+  pdfauthor={Quynh Tran},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Dataset\_demo}
+\author{Quynh Tran}
+\date{2026-02-23}
+
+\begin{document}
+\maketitle
+
+\section{Import libraries}\label{import-libraries}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(MASS)}
+\FunctionTok{library}\NormalTok{(tidyverse)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## -- Attaching core tidyverse packages ------------------------ tidyverse 2.0.0 --
+## v dplyr     1.2.1     v readr     2.2.0
+## v forcats   1.0.1     v stringr   1.6.0
+## v ggplot2   4.0.2     v tibble    3.3.1
+## v lubridate 1.9.5     v tidyr     1.3.2
+## v purrr     1.2.1     
+## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+## x dplyr::select() masks MASS::select()
+## i Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("lattice")}
+\FunctionTok{library}\NormalTok{(lattice)}
+\FunctionTok{library}\NormalTok{(caret)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'caret'
+## 
+## The following object is masked from 'package:purrr':
+## 
+##     lift
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("Matrix")}
+\FunctionTok{library}\NormalTok{(Matrix)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'Matrix'
+## 
+## The following objects are masked from 'package:tidyr':
+## 
+##     expand, pack, unpack
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(glmnet)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loaded glmnet 4.1-10
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(mlbench)}
+\FunctionTok{library}\NormalTok{(caret)}
+\end{Highlighting}
+\end{Shaded}
+
+\#Import the dataset
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df }\OtherTok{\textless{}{-}} \FunctionTok{read.csv}\NormalTok{(}\StringTok{"data/company\_tagger/glassdoor\_reviews\_with\_sector\_revised.csv"}\NormalTok{)}
+\CommentTok{\#view(df)}
+\FunctionTok{summary}\NormalTok{(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   timestamp          overview_id         review_id         review_url       
+##  Length:1000        Min.   :      12   Min.   : 1710168   Length:1000       
+##  Class :character   1st Qu.:    6667   1st Qu.:41717569   Class :character  
+##  Mode  :character   Median :40206238   Median :53464690   Mode  :character  
+##                     Mean   :31117636   Mean   :50892946                     
+##                     3rd Qu.:59037614   3rd Qu.:64569311                     
+##                     Max.   :73099459   Max.   :85655363                     
+##                                                                             
+##  rating_date        count_helpful    count_unhelpful employee_job_end_year
+##  Length:1000        Min.   : 1.000   Min.   :1.000   Min.   :2009         
+##  Class :character   1st Qu.: 1.000   1st Qu.:1.000   1st Qu.:2019         
+##  Mode  :character   Median : 2.000   Median :1.000   Median :2020         
+##                     Mean   : 3.376   Mean   :1.478   Mean   :2020         
+##                     3rd Qu.: 4.000   3rd Qu.:1.000   3rd Qu.:2021         
+##                     Max.   :45.000   Max.   :5.000   Max.   :2024         
+##                     NA's   :200      NA's   :977     NA's   :49           
+##  employee_length  employee_responses employee_status    employee_type     
+##  Min.   : 1.000   Mode:logical       Length:1000        Length:1000       
+##  1st Qu.: 1.000   NA's:1000          Class :character   Class :character  
+##  Median : 2.000                      Mode  :character   Mode  :character  
+##  Mean   : 3.856                                                           
+##  3rd Qu.: 4.000                                                           
+##  Max.   :20.000                                                           
+##  NA's   :4                                                                
+##   flag_covid        flag_featured  flags_business_outlook flags_ceo_approval
+##  Length:1000        Mode:logical   Length:1000            Length:1000       
+##  Class :character   NA's:1000      Class :character       Class :character  
+##  Mode  :character                  Mode  :character       Mode  :character  
+##                                                                             
+##                                                                             
+##                                                                             
+##                                                                             
+##  flags_recommend_frend rating_culture_values rating_diversity_inclusion
+##  Length:1000           Min.   :1.000         Min.   :1.00              
+##  Class :character      1st Qu.:1.000         1st Qu.:1.00              
+##  Mode  :character      Median :2.000         Median :3.00              
+##                        Mean   :2.452         Mean   :2.85              
+##                        3rd Qu.:4.000         3rd Qu.:4.00              
+##                        Max.   :5.000         Max.   :5.00              
+##                                              NA's   :133               
+##  rating_overall  rating_work_life   summary          company_name      
+##  Min.   :1.000   Min.   :1.000    Length:1000        Length:1000       
+##  1st Qu.:1.000   1st Qu.:1.000    Class :character   Class :character  
+##  Median :2.000   Median :2.000    Mode  :character   Mode  :character  
+##  Mean   :2.447   Mean   :2.608                                         
+##  3rd Qu.:4.000   3rd Qu.:4.000                                         
+##  Max.   :5.000   Max.   :5.000                                         
+##                                                                        
+##  review_advice          url            employee_location  employee_job_title
+##  Length:1000        Length:1000        Length:1000        Length:1000       
+##  Class :character   Class :character   Class :character   Class :character  
+##  Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+##                                                                             
+##                                                                             
+##                                                                             
+##                                                                             
+##  advice_to_management overview_url       original_url       review_pros       
+##  Length:1000          Length:1000        Length:1000        Length:1000       
+##  Class :character     Class :character   Class :character   Class :character  
+##  Mode  :character     Mode  :character   Mode  :character   Mode  :character  
+##                                                                               
+##                                                                               
+##                                                                               
+##                                                                               
+##  review_cons        rating_compensation_benefits rating_senior_leadership
+##  Length:1000        Min.   :1.000                Min.   :1.000           
+##  Class :character   1st Qu.:1.000                1st Qu.:1.000           
+##  Mode  :character   Median :3.000                Median :1.000           
+##                     Mean   :2.809                Mean   :2.122           
+##                     3rd Qu.:4.000                3rd Qu.:3.000           
+##                     Max.   :5.000                Max.   :5.000           
+##                                                                          
+##  rating_career_opportunities glassdoor_employer_id    sector         
+##  Min.   :1.000               Min.   :     12       Length:1000       
+##  1st Qu.:2.000               1st Qu.:   1651       Class :character  
+##  Median :3.000               Median :   3767       Mode  :character  
+##  Mean   :2.956               Mean   : 333015                         
+##  3rd Qu.:4.000               3rd Qu.:   9779                         
+##  Max.   :5.000               Max.   :8441464                         
+##  NA's   :594                 NA's   :594
+\end{verbatim}
+
+\section{EDA:}\label{eda}
+
+\section{Some EDA}\label{some-eda}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("skimr")}
+\CommentTok{\#library(skimr)}
+\CommentTok{\#skim(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("DataExplorer")}
+\CommentTok{\#library(DataExplorer)}
+\CommentTok{\#DataExplorer::create\_report(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Data Viz (before data
+cleaning)}\label{data-viz-before-data-cleaning}
+
+\section{Visualizing patterns of missingness across
+variables.}\label{visualizing-patterns-of-missingness-across-variables.}
+
+\section{checking which variables tend to be missing together using a
+correlation heatmap of missing
+values.}\label{checking-which-variables-tend-to-be-missing-together-using-a-correlation-heatmap-of-missing-values.}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{missing\_matrix }\OtherTok{\textless{}{-}} \FunctionTok{is.na}\NormalTok{(df)}
+\NormalTok{missing\_matrix }\OtherTok{\textless{}{-}}\NormalTok{ missing\_matrix }\SpecialCharTok{*} \DecValTok{1} \CommentTok{\#coerces boolean to numeric T = 1, F = 0}
+\NormalTok{missing\_matrix }\OtherTok{\textless{}{-}}\NormalTok{ missing\_matrix[, }\FunctionTok{colSums}\NormalTok{(missing\_matrix) }\SpecialCharTok{\textgreater{}} \DecValTok{0}\NormalTok{] }\CommentTok{\#filter out columns with no missing }
+\NormalTok{cor\_matrix }\OtherTok{\textless{}{-}} \FunctionTok{cor}\NormalTok{(missing\_matrix)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning in cor(missing_matrix): the standard deviation is zero
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("ggcorrplot")}
+\FunctionTok{library}\NormalTok{(ggcorrplot)}
+\FunctionTok{ggcorrplot}\NormalTok{(cor\_matrix, }\AttributeTok{tl.srt =} \DecValTok{90}\NormalTok{, }\AttributeTok{tl.cex =} \DecValTok{8}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: `aes_string()` was deprecated in ggplot2 3.0.0.
+## i Please use tidy evaluation idioms with `aes()`.
+## i See also `vignette("ggplot2-in-packages")` for more information.
+## i The deprecated feature was likely used in the ggcorrplot package.
+##   Please report the issue at <https://github.com/kassambara/ggcorrplot/issues>.
+## This warning is displayed once per session.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+## generated.
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-5-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("corrplot")}
+\FunctionTok{library}\NormalTok{(corrplot)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## corrplot 0.95 loaded
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{corrplot}\NormalTok{(cor\_matrix, }\AttributeTok{method =} \StringTok{"color"}\NormalTok{, }\AttributeTok{tl.cex =} \FloatTok{0.6}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-5-2.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# which variables have the strongest missingness relationships}
+\NormalTok{cor\_long }\OtherTok{\textless{}{-}} \FunctionTok{as.data.frame}\NormalTok{(}\FunctionTok{as.table}\NormalTok{(cor\_matrix))}
+
+\NormalTok{cor\_long }\OtherTok{\textless{}{-}}\NormalTok{ cor\_long[cor\_long}\SpecialCharTok{$}\NormalTok{Var1 }\SpecialCharTok{!=}\NormalTok{ cor\_long}\SpecialCharTok{$}\NormalTok{Var2, ] }\CommentTok{\# avoids listing same variables}
+\NormalTok{cor\_long }\OtherTok{\textless{}{-}}\NormalTok{ cor\_long }\SpecialCharTok{\%\textgreater{}\%}\FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(}\FunctionTok{abs}\NormalTok{(Freq)))}\SpecialCharTok{\%\textgreater{}\%}\FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(Freq)) }\CommentTok{\#sorts descending, filters out NA correlation }
+
+\NormalTok{cor\_long}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##                           Var1                        Var2         Freq
+## 1        glassdoor_employer_id rating_career_opportunities  1.000000000
+## 2  rating_career_opportunities       glassdoor_employer_id  1.000000000
+## 3  rating_career_opportunities               count_helpful -0.604783884
+## 4        glassdoor_employer_id               count_helpful -0.604783884
+## 5                count_helpful rating_career_opportunities -0.604783884
+## 6                count_helpful       glassdoor_employer_id -0.604783884
+## 7   rating_diversity_inclusion             count_unhelpful -0.391742206
+## 8              count_unhelpful  rating_diversity_inclusion -0.391742206
+## 9  rating_career_opportunities  rating_diversity_inclusion -0.383797319
+## 10       glassdoor_employer_id  rating_diversity_inclusion -0.383797319
+## 11  rating_diversity_inclusion rating_career_opportunities -0.383797319
+## 12  rating_diversity_inclusion       glassdoor_employer_id -0.383797319
+## 13 rating_career_opportunities       employee_job_end_year -0.274560456
+## 14       glassdoor_employer_id       employee_job_end_year -0.274560456
+## 15       employee_job_end_year rating_career_opportunities -0.274560456
+## 16       employee_job_end_year       glassdoor_employer_id -0.274560456
+## 17  rating_diversity_inclusion               count_helpful -0.173746731
+## 18               count_helpful  rating_diversity_inclusion -0.173746731
+## 19       employee_job_end_year               count_helpful -0.090332975
+## 20               count_helpful       employee_job_end_year -0.090332975
+## 21       employee_job_end_year             count_unhelpful -0.088784290
+## 22             count_unhelpful       employee_job_end_year -0.088784290
+## 23 rating_career_opportunities             employee_length -0.076653243
+## 24       glassdoor_employer_id             employee_length -0.076653243
+## 25             employee_length rating_career_opportunities -0.076653243
+## 26             employee_length       glassdoor_employer_id -0.076653243
+## 27             employee_length       employee_job_end_year  0.059007618
+## 28       employee_job_end_year             employee_length  0.059007618
+## 29             count_unhelpful               count_helpful  0.043361286
+## 30               count_helpful             count_unhelpful  0.043361286
+## 31  rating_diversity_inclusion       employee_job_end_year -0.034336779
+## 32       employee_job_end_year  rating_diversity_inclusion -0.034336779
+## 33  rating_diversity_inclusion             employee_length -0.024820847
+## 34             employee_length  rating_diversity_inclusion -0.024820847
+## 35 rating_career_opportunities             count_unhelpful -0.018175597
+## 36       glassdoor_employer_id             count_unhelpful -0.018175597
+## 37             count_unhelpful rating_career_opportunities -0.018175597
+## 38             count_unhelpful       glassdoor_employer_id -0.018175597
+## 39             employee_length             count_unhelpful  0.009723373
+## 40             count_unhelpful             employee_length  0.009723373
+## 41             employee_length               count_helpful  0.007921553
+## 42               count_helpful             employee_length  0.007921553
+\end{verbatim}
+
+\section{Data Cleaning:}\label{data-cleaning}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(tidyverse)}
+\FunctionTok{library}\NormalTok{(lubridate)}
+
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_job\_quit }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{grepl}\NormalTok{(}\StringTok{"\^{}Former"}\NormalTok{, df}\SpecialCharTok{$}\NormalTok{employee\_type, }\AttributeTok{ignore.case =} \ConstantTok{TRUE}\NormalTok{),}\ConstantTok{TRUE}\NormalTok{, }\ConstantTok{FALSE}\NormalTok{)}
+
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_job\_start\_year }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(}
+\NormalTok{  df}\SpecialCharTok{$}\NormalTok{employee\_job\_quit,}
+\NormalTok{  df}\SpecialCharTok{$}\NormalTok{employee\_job\_end\_year }\SpecialCharTok{{-}}\NormalTok{ df}\SpecialCharTok{$}\NormalTok{employee\_length, }\CommentTok{\# Former use the year quit}
+\NormalTok{  df}\SpecialCharTok{$}\NormalTok{rating\_year }\SpecialCharTok{{-}}\NormalTok{ df}\SpecialCharTok{$}\NormalTok{employee\_length }\CommentTok{\# Current: use the year of rating}
+\NormalTok{)}
+
+\FunctionTok{dim}\NormalTok{(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1000   39
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#lengthvars \textless{}{-} c("employee\_job\_start\_year", "employee\_job\_end\_year", "employee\_job\_quit", "employee\_length", "employee\_type")}
+\CommentTok{\#print(df[, lengthvars])}
+
+\CommentTok{\# is there anyone quit job without giving end year? no}
+\CommentTok{\# all missing of employee\_job\_end\_year due to not quit job}
+\CommentTok{\#df[df$employee\_job\_quit \& is.na(df$employee\_job\_end\_year), ]}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Create a column for employee\_type1 that identifies whether an
+employee if former or current, based on column employee\_type, by
+extracting the first two words from
+employee\_type}\label{create-a-column-for-employee_type1-that-identifies-whether-an-employee-if-former-or-current-based-on-column-employee_type-by-extracting-the-first-two-words-from-employee_type}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_type1 }\OtherTok{\textless{}{-}} \FunctionTok{sapply}\NormalTok{(}\FunctionTok{strsplit}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_type, }\StringTok{" "}\NormalTok{), }\StringTok{\textasciigrave{}}\AttributeTok{[}\StringTok{\textasciigrave{}}\NormalTok{, }\DecValTok{1}\NormalTok{)}
+\CommentTok{\#df$employee\_type1}
+\end{Highlighting}
+\end{Shaded}
+
+\section{For column count\_helpful and count\_unhelpful, replace missing
+values (NA) in count\_helpful and count\_unhelpful with
+0}\label{for-column-count_helpful-and-count_unhelpful-replace-missing-values-na-in-count_helpful-and-count_unhelpful-with-0}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{count\_helpful[}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{count\_helpful)] }\OtherTok{\textless{}{-}} \DecValTok{0}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{count\_unhelpful[}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{count\_unhelpful)] }\OtherTok{\textless{}{-}} \DecValTok{0}
+
+\CommentTok{\# check if these columns still have any missing values}
+\FunctionTok{colSums}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(df[, }\FunctionTok{c}\NormalTok{(}\StringTok{"count\_helpful"}\NormalTok{, }\StringTok{"count\_unhelpful"}\NormalTok{)])) }\CommentTok{\# passed!}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   count_helpful count_unhelpful 
+##               0               0
+\end{verbatim}
+
+\section{Create a new column called helpfulness score that stores the
+difference between count\_helpful and
+count\_unhelpful}\label{create-a-new-column-called-helpfulness-score-that-stores-the-difference-between-count_helpful-and-count_unhelpful}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{helpfulness\_score }\OtherTok{\textless{}{-}}\NormalTok{ df}\SpecialCharTok{$}\NormalTok{count\_helpful }\SpecialCharTok{{-}}\NormalTok{ df}\SpecialCharTok{$}\NormalTok{count\_unhelpful}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{helpfulness\_score}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    [1] 10  2  0  4  0  1  7  3  6  1  1  4  5  4  3  1  0  6  2  7  8  1  4  3
+##   [25]  1  0 16  3  0  0  0  2 10  2  0  0  1  1  0  3  1  3  0  0  3  0  0  8
+##   [49]  0  0  1  1  1  0  0  0  0  0  1  0  1  1  2  5  1  0  0  1  2  1  6  6
+##   [73]  2  7  4  6  0  7  1  1  2  1  5  3  5  1  1  1  2  0  1  0  0  0  1  0
+##   [97]  1  0  4  1  3  0  0  1  0  1  1  2  2 12  4  0  1  2  1  1  1  0  0  1
+##  [121]  1  2  2  8  1  8  0  0  3  3  4  2  1  1  0  0  5  0  0  7  0  2  1  0
+##  [145]  1  4  1  1  1  2  1  1  4 14  1  4  6  2  3  1 11  2  1  1  3  2 14  2
+##  [169] 12  1  1  1  1  1  2 10  3  9  1  3  4  1  1  2  3  0  3  0  0  0  0  2
+##  [193]  0  7  1  0  0  0  1  1  1  0  0  1  2  1  0  0  0  1  2  0  0  0  0  1
+##  [217]  1  1  9  9  8  2  7  1  1  1  0  4  1  1  3  2  3  1  1  2  2  1  2  2
+##  [241]  1  1 14  2  0  3  1  0  1  3  0  1  2  1  4  1  5  0  0  1  4  1  0  5
+##  [265]  2  2  2  0  0  2  1  0 12  1  1  3  0  1  0  3  0  1  1  1  1  1  5  0
+##  [289]  2  2 11  1  1  1  1  1  1  0  7  0  1  3  1  0  1  1  1  1  1 13  2  7
+##  [313]  1  2  3  1  3  3  8  1  1  9  1  1  1  0  3  1  3  2  1  2 12  0  0  2
+##  [337]  2  1  0  1  1 -1  0  1  0  1  0  0  0  1  1  0  3  1  0  1  0 11  6  2
+##  [361]  1  2  1  1  4  1 12  1  3  1  1  1  3  2  3  1  2  1  1  2  1  1  3  1
+##  [385]  2  3  1 10  2  6  2  1  1 20  2  2  6  3  2  4  8  1  3 13 18  3  1  0
+##  [409]  2  1  4  1  1  5  2  8  1  6  2  3 14  1  1  2  8  1  0  2  1  6  1  1
+##  [433]  1  7  3  2  1  1  6  5  1  1  6  1  1  2  1  7  1  6  2  1 10  3  3  3
+##  [457]  3  1  7  6  1  0  1  1  0  1  0  3  0  7  0  3  2  0  2  3  1  1  0  0
+##  [481]  1  2  1  1  4  4  1 24  1 41  1  0  1  1  3  3  3  8  0  1  2  5  3  1
+##  [505]  3  1  1  2  1  1  1  1  5  4  1  2  2  9  5  2  5  7 13 12  2  0  1  2
+##  [529]  0  1  3  1  7  2  1 13  5  1  4 -1  3  4  1  1  2  1  0  1  0  1  3  0
+##  [553]  1  0  0  0  0  0  0  0  1  4  1  0  4  3  0  1  3  0  3  1  1  3  1  1
+##  [577]  2  2  1  0  1  1  0  0  1  4  1  0  3  7  2  4  5 17 11  1  2  1  0  1
+##  [601]  0  0  0  2  7  2 10  2  2  2  0  5  3  2  8  6  2  1  4  1  2  2  1  0
+##  [625]  5  0  5  0  0  0  2  0  0  0  6 22  2  1  1 15  1 15  2 18  1  4  1  1
+##  [649]  1  4  1  1  1  1  2  2  6  1  1  5  1  1  5  1  3  2  1  1  0  0  3  5
+##  [673]  0  4  1  1 16  4  3  2  1  4  2  1  1  4  3  1  5  3  4  1  1  1  6  1
+##  [697]  1  1  2  1  1  2  2  1  1 24  8  3  2  1  4  1  3  7  4  1  4  0  5  0
+##  [721]  1  1  0  2  1  1  1  3  3  1  1  1  0  2  1  0  1  0  1  1  2  4  1  3
+##  [745]  4  8  0  4  3  2  2  9  0  0  0  1  0  0  0  8  7  1  0  0  1  0  2  1
+##  [769]  1  0  0  0  1  5  5  2  2  6  1  0  0  0  0  5  2  1  1  1  3  3 24  1
+##  [793]  1  4  2  4  1  1  1  1  9  0  1  0  0 17  0  1  1  1 10  0  1  0  3  0
+##  [817] -2  1  0  0  0  5  2  0 14  0  6  3  1  2  2  2  1  0  0  0  0  0  1  1
+##  [841]  0  0  0  0  8  4  0 17  0  1  1  0  0  0  0  0  0  0  2  2  0  0  0  0
+##  [865] 21  0  5  7  4  1  1  1  1  1  0  9  5  2 15  1  7  1  6 45  4  2  5  2
+##  [889]  6  2  1 17  1  4  2  3  0  0  1  1  5  1  7  6  1  1 12  3  6  1  1  1
+##  [913] 11  1  3  2 23 20  4  1  2  3  7  0  1  1  0  1  1  7  1  2  1  1  3  1
+##  [937]  1  2  6  2  1  1  2 -3  6  5  1  2  1  1  4 17  1 12  2  2  5  2  1  2
+##  [961]  1  3  1  1  0  9  6  5  9  5  5  4  5  1  1  3  2  2  1  1  1  5 24  1
+##  [985]  2  2  2  5  1  4  2  1  2  3  2  8  2  1  6  0
+\end{verbatim}
+
+\section{Replace missing values (NA) in the advice\_to\_management
+column with
+``No''}\label{replace-missing-values-na-in-the-advice_to_management-column-with-no}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{advice\_to\_management[}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{advice\_to\_management)] }\OtherTok{\textless{}{-}} \StringTok{"No"}
+\end{Highlighting}
+\end{Shaded}
+
+\section{For rating\_diversity\_inclusion, fill missing value using the
+MEDIAN within the same company. If the company has only one review (or
+no median available), then fill with the median of the
+sector.}\label{for-rating_diversity_inclusion-fill-missing-value-using-the-median-within-the-same-company.-if-the-company-has-only-one-review-or-no-median-available-then-fill-with-the-median-of-the-sector.}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Visualize distribution of rating\_diversity\_inclusion}
+\FunctionTok{library}\NormalTok{(ggplot2)}
+
+\FunctionTok{ggplot}\NormalTok{(df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ rating\_diversity\_inclusion)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{bins =} \DecValTok{20}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Distribution of Diversity \& Inclusion Rating"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Rating"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Count"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: Removed 133 rows containing non-finite outside the scale range
+## (`stat_bin()`).
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-12-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 1 — Define Median Safely (Handle All{-}NA Case)}
+\NormalTok{safe\_median }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(x) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{all}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(x))) }\FunctionTok{return}\NormalTok{(}\ConstantTok{NA}\NormalTok{)}
+  \FunctionTok{return}\NormalTok{(}\FunctionTok{median}\NormalTok{(x, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{))}
+\NormalTok{\}}
+
+\FunctionTok{sum}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_diversity\_inclusion))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 133
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 2 — Company{-}Level Median Imputation}
+\FunctionTok{library}\NormalTok{(dplyr)}
+
+\NormalTok{df }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(company\_name) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{rating\_diversity\_inclusion =} \FunctionTok{ifelse}\NormalTok{(}
+      \FunctionTok{is.na}\NormalTok{(rating\_diversity\_inclusion),}
+      \FunctionTok{safe\_median}\NormalTok{(rating\_diversity\_inclusion),}
+\NormalTok{      rating\_diversity\_inclusion}
+\NormalTok{    )}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{()}
+
+\CommentTok{\# Step 3 — Sector{-}Level Fallback}
+\NormalTok{df }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(sector) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{rating\_diversity\_inclusion =} \FunctionTok{ifelse}\NormalTok{(}
+      \FunctionTok{is.na}\NormalTok{(rating\_diversity\_inclusion),}
+      \FunctionTok{safe\_median}\NormalTok{(rating\_diversity\_inclusion),}
+\NormalTok{      rating\_diversity\_inclusion}
+\NormalTok{    )}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{()}
+
+\CommentTok{\# Step 4 — Final Check}
+\FunctionTok{sum}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_diversity\_inclusion)) }\CommentTok{\# passed!}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0
+\end{verbatim}
+
+Diversity \& Inclusion Rating data is ordinal (1-5 rating) and not
+normally distributed; hence, we will use median imputation for missing
+data.
+
+\section{Same median imputation for
+employee\_length}\label{same-median-imputation-for-employee_length}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 1: Visualize employee\_length and check its distribution}
+\CommentTok{\# library(ggplot2)}
+
+\FunctionTok{ggplot}\NormalTok{(df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ employee\_length)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{bins =} \DecValTok{30}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Distribution of Employee Length"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Employee Length (Years)"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Count"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: Removed 4 rows containing non-finite outside the scale range
+## (`stat_bin()`).
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-13-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{sum}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_length))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 4
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 2 — Company{-}Level Median Imputation}
+\FunctionTok{library}\NormalTok{(dplyr)}
+
+\NormalTok{df }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(company\_name) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{employee\_length =} \FunctionTok{ifelse}\NormalTok{(}
+      \FunctionTok{is.na}\NormalTok{(employee\_length),}
+      \FunctionTok{safe\_median}\NormalTok{(employee\_length),}
+\NormalTok{      employee\_length}
+\NormalTok{    )}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{()}
+
+\CommentTok{\# Step 3 — Sector{-}Level Fallback}
+\NormalTok{df }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(sector) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{employee\_length =} \FunctionTok{ifelse}\NormalTok{(}
+      \FunctionTok{is.na}\NormalTok{(employee\_length),}
+      \FunctionTok{safe\_median}\NormalTok{(employee\_length),}
+\NormalTok{      employee\_length}
+\NormalTok{    )}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{()}
+
+\CommentTok{\# Step 4 — Final Check}
+\FunctionTok{sum}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_length)) }\CommentTok{\# passed!}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0
+\end{verbatim}
+
+Employee length data is clearly right-skewed according to the histogram;
+hence, we're using median imputation for missing data for this column.
+
+\section{Remove certain columns that do not serve the analysis:
+overview\_id, review\_id, review\_url, url, overview\_url,
+original\_url, flag\_covid, review\_advice,
+flag\_featured:}\label{remove-certain-columns-that-do-not-serve-the-analysis-overview_id-review_id-review_url-url-overview_url-original_url-flag_covid-review_advice-flag_featured}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df }\OtherTok{\textless{}{-}} \FunctionTok{subset}\NormalTok{(df, }\AttributeTok{select =} \SpecialCharTok{{-}}\FunctionTok{c}\NormalTok{(timestamp, overview\_id, review\_id, review\_url, url, overview\_url, original\_url, employee\_type, employee\_responses, flag\_covid, review\_advice, flag\_featured))}
+\FunctionTok{head}\NormalTok{(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 29
+##   rating_date                count_helpful count_unhelpful employee_job_end_year
+##   <chr>                              <dbl>           <dbl>                 <dbl>
+## 1 "\"2019-08-30T18:24:32.68~            10               0                  2019
+## 2 "\"2022-02-19T21:38:00.36~             2               0                    NA
+## 3 "\"2021-02-19T02:53:22.84~             0               0                  2021
+## 4 "\"2016-09-27T16:00:19.06~             4               0                  2015
+## 5 "\"2021-04-26T15:08:18.06~             0               0                    NA
+## 6 "\"2022-01-21T00:00:00.00~             1               0                  2021
+## # i 25 more variables: employee_length <dbl>, employee_status <chr>,
+## #   flags_business_outlook <chr>, flags_ceo_approval <chr>,
+## #   flags_recommend_frend <chr>, rating_culture_values <int>,
+## #   rating_diversity_inclusion <dbl>, rating_overall <int>,
+## #   rating_work_life <int>, summary <chr>, company_name <chr>,
+## #   employee_location <chr>, employee_job_title <chr>,
+## #   advice_to_management <chr>, review_pros <chr>, review_cons <chr>, ...
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{dim}\NormalTok{(df) }\CommentTok{\# after the removal, we have 1000 obs and 29 features. }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1000   29
+\end{verbatim}
+
+\section{Create useful variables:}\label{create-useful-variables}
+
+\section{Positive vs.~Negative
+reviews:}\label{positive-vs.-negative-reviews}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{sentiment }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_overall }\SpecialCharTok{\textgreater{}=} \DecValTok{4}\NormalTok{, }\StringTok{"positive"}\NormalTok{,}
+                 \FunctionTok{ifelse}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_overall }\SpecialCharTok{\textless{}=} \DecValTok{2}\NormalTok{, }\StringTok{"negative"}\NormalTok{, }\StringTok{"neutral"}\NormalTok{))}
+
+\FunctionTok{head}\NormalTok{(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 30
+##   rating_date                count_helpful count_unhelpful employee_job_end_year
+##   <chr>                              <dbl>           <dbl>                 <dbl>
+## 1 "\"2019-08-30T18:24:32.68~            10               0                  2019
+## 2 "\"2022-02-19T21:38:00.36~             2               0                    NA
+## 3 "\"2021-02-19T02:53:22.84~             0               0                  2021
+## 4 "\"2016-09-27T16:00:19.06~             4               0                  2015
+## 5 "\"2021-04-26T15:08:18.06~             0               0                    NA
+## 6 "\"2022-01-21T00:00:00.00~             1               0                  2021
+## # i 26 more variables: employee_length <dbl>, employee_status <chr>,
+## #   flags_business_outlook <chr>, flags_ceo_approval <chr>,
+## #   flags_recommend_frend <chr>, rating_culture_values <int>,
+## #   rating_diversity_inclusion <dbl>, rating_overall <int>,
+## #   rating_work_life <int>, summary <chr>, company_name <chr>,
+## #   employee_location <chr>, employee_job_title <chr>,
+## #   advice_to_management <chr>, review_pros <chr>, review_cons <chr>, ...
+\end{verbatim}
+
+\section{Convert categorical
+variables:}\label{convert-categorical-variables}
+
+In R, categorical variables should usually be converted to factors
+because factors tell R that the variable represents categories, not
+numeric values or free text. This affects how models, summaries, and
+plots treat the variable.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Employee{-}related categories}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_status }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_status)}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_type1 }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_type1)}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_job\_title }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_job\_title)}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{employee\_location }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{employee\_location)}
+
+\CommentTok{\# Recommendation / Flags}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{flags\_ceo\_approval }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_ceo\_approval)}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{flags\_business\_outlook }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_business\_outlook)}
+
+\CommentTok{\# Company / Industry Variables}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{company\_name }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{company\_name)}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{sector }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{sector)}
+
+\CommentTok{\# Sentiment}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{sentiment }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{sentiment)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{str}\NormalTok{(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## tibble [1,000 x 30] (S3: tbl_df/tbl/data.frame)
+##  $ rating_date                 : chr [1:1000] "\"2019-08-30T18:24:32.680Z\"" "\"2022-02-19T21:38:00.363Z\"" "\"2021-02-19T02:53:22.840Z\"" "\"2016-09-27T16:00:19.067Z\"" ...
+##  $ count_helpful               : num [1:1000] 10 2 0 4 0 1 7 3 6 1 ...
+##  $ count_unhelpful             : num [1:1000] 0 0 0 0 0 0 0 0 0 0 ...
+##  $ employee_job_end_year       : num [1:1000] 2019 NA 2021 2015 NA ...
+##  $ employee_length             : num [1:1000] 20 6 2 2 2 2 1 2 4 1 ...
+##  $ employee_status             : Factor w/ 6 levels "","CONTRACT",..: 6 6 6 6 6 1 1 1 6 1 ...
+##  $ flags_business_outlook      : Factor w/ 3 levels "NEGATIVE","NEUTRAL",..: 1 3 3 1 1 3 2 1 1 1 ...
+##  $ flags_ceo_approval          : Factor w/ 4 levels "","APPROVE","DISAPPROVE",..: 3 2 2 4 2 2 3 3 4 3 ...
+##  $ flags_recommend_frend       : Factor w/ 2 levels "NEGATIVE","POSITIVE": 1 2 2 1 1 2 1 1 1 1 ...
+##  $ rating_culture_values       : int [1:1000] 1 3 5 1 5 5 1 1 2 1 ...
+##  $ rating_diversity_inclusion  : num [1:1000] 3 5 5 5 5 5 1 1 5 1 ...
+##  $ rating_overall              : int [1:1000] 2 5 4 2 3 5 1 1 1 1 ...
+##  $ rating_work_life            : int [1:1000] 1 2 5 1 3 5 3 1 2 1 ...
+##  $ summary                     : chr [1:1000] "IT is Out of Control" "Great Company to work with" "Great" "Vodafone is an Egotistical Company that only cares about its net promoter score" ...
+##  $ company_name                : Factor w/ 693 levels "1 800 CONTACTS",..: 219 297 279 658 643 247 688 133 583 3 ...
+##  $ employee_location           : Factor w/ 212 levels "","Ahmedabad",..: 1 138 40 101 169 1 1 1 193 1 ...
+##  $ employee_job_title          : Factor w/ 287 levels "","1, Sys Engineer",..: 158 22 258 222 32 1 1 1 267 1 ...
+##  $ advice_to_management        : chr [1:1000] "Humble yourselves.  Remember when you were coming up in your career.  Respect your associates and appreciate al"| __truncated__ "Bring this great Company at par with similar great companies in India, eg, Infosys, TATA, etc, in terms of work"| __truncated__ "Good" "You have some amazing staff members who are totally disengaged. Your TNPS system is floored. Your computer syst"| __truncated__ ...
+##  $ review_pros                 : chr [1:1000] "Salary was good for the position, but only because they never promoted anyone." "1. Great brand name\n2. Top Management are consistent on bank's goals and strategies\n3. Constantly growing company" "Good and best and bestest best" "Unfortunately there were no pros during my time working for this company." ...
+##  $ review_cons                 : chr [1:1000] "Relentless pressure from the top.  Constantly changing direction.  Senior management is easily sold on every sh"| __truncated__ "1. Work hours do not adhere to internationally accepted standards\n2. Supervisory culture still embedded in 20t"| __truncated__ "Not bad and not bad and not bad" "Retail Stores are severely understaffed.\nNew system called seibel-none of the staff know how to use properly.\"| __truncated__ ...
+##  $ rating_compensation_benefits: int [1:1000] 2 3 5 2 4 5 1 2 1 2 ...
+##  $ rating_senior_leadership    : int [1:1000] 1 5 5 2 2 5 1 1 1 1 ...
+##  $ rating_career_opportunities : num [1:1000] 1 5 3 2 3 NA NA NA 3 NA ...
+##  $ glassdoor_employer_id       : num [1:1000] 925157 100231 9079 5775 89 ...
+##  $ sector                      : Factor w/ 20 levels "","Agriculture",..: 8 6 18 19 19 6 6 18 6 18 ...
+##  $ employee_job_quit           : logi [1:1000] TRUE FALSE TRUE TRUE FALSE TRUE ...
+##  $ employee_job_start_year     : num [1:1000] 1999 NA 2019 2013 NA ...
+##  $ employee_type1              : Factor w/ 2 levels "Current","Former": 2 1 2 2 1 2 2 2 2 2 ...
+##  $ helpfulness_score           : num [1:1000] 10 2 0 4 0 1 7 3 6 1 ...
+##  $ sentiment                   : Factor w/ 3 levels "negative","neutral",..: 1 3 3 1 2 3 1 1 1 1 ...
+\end{verbatim}
+
+\section{Descriptive Statistics:}\label{descriptive-statistics}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_overall)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   1.000   1.000   2.000   2.447   4.000   5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_work\_life)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   1.000   1.000   2.000   2.608   4.000   5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_culture\_values)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   1.000   1.000   2.000   2.452   4.000   5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_career\_opportunities)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##   1.000   2.000   3.000   2.956   4.000   5.000     594
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_compensation\_benefits)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   1.000   1.000   3.000   2.809   4.000   5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_diversity\_inclusion)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   1.000   1.000   3.000   2.949   4.000   5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_senior\_leadership)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   1.000   1.000   1.000   2.122   3.000   5.000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{mean}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_overall)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 2.447
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{sd}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_overall)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1.407541
+\end{verbatim}
+
+\section{For rating\_date column, extract the first 10 characters and
+convert them to date
+format:}\label{for-rating_date-column-extract-the-first-10-characters-and-convert-them-to-date-format}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 1: Inspect the column first}
+\FunctionTok{sum}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{sum}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date }\SpecialCharTok{==} \StringTok{""}\NormalTok{, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{head}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "\"2019-08-30T18:24:32.680Z\"" "\"2022-02-19T21:38:00.363Z\""
+## [3] "\"2021-02-19T02:53:22.840Z\"" "\"2016-09-27T16:00:19.067Z\""
+## [5] "\"2021-04-26T15:08:18.067Z\"" "\"2022-01-21T00:00:00.000Z\""
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{unique}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date)[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{10}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  [1] "\"2019-08-30T18:24:32.680Z\"" "\"2022-02-19T21:38:00.363Z\""
+##  [3] "\"2021-02-19T02:53:22.840Z\"" "\"2016-09-27T16:00:19.067Z\""
+##  [5] "\"2021-04-26T15:08:18.067Z\"" "\"2022-01-21T00:00:00.000Z\""
+##  [7] "\"2020-12-29T00:00:00.000Z\"" "\"2023-06-26T00:00:00.000Z\""
+##  [9] "\"2018-05-09T17:51:32.563Z\"" "\"2020-12-28T00:00:00.000Z\""
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 2: Convert to character first, then extract the date:}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{rating\_date\_clean }\OtherTok{\textless{}{-}} \FunctionTok{gsub}\NormalTok{(}\StringTok{\textquotesingle{}"\textquotesingle{}}\NormalTok{, }\StringTok{""}\NormalTok{, }\FunctionTok{as.character}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date))}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{rating\_date\_clean }\OtherTok{\textless{}{-}} \FunctionTok{as.Date}\NormalTok{(}\FunctionTok{substr}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date\_clean, }\DecValTok{1}\NormalTok{, }\DecValTok{10}\NormalTok{), }\AttributeTok{format =} \StringTok{"\%Y{-}\%m{-}\%d"}\NormalTok{)}
+
+\CommentTok{\# Step 3: Verify}
+\FunctionTok{str}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date\_clean)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  Date[1:1000], format: "2019-08-30" "2022-02-19" "2021-02-19" "2016-09-27" "2021-04-26" ...
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{head}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date\_clean)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "2019-08-30" "2022-02-19" "2021-02-19" "2016-09-27" "2021-04-26"
+## [6] "2022-01-21"
+\end{verbatim}
+
+\section{Data Viz:}\label{data-viz}
+
+\section{Histogram on distribution of
+rating\_overall:}\label{histogram-on-distribution-of-rating_overall}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+
+\FunctionTok{ggplot}\NormalTok{(df, }\FunctionTok{aes}\NormalTok{(rating\_overall)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{binwidth=}\DecValTok{1}\NormalTok{, }\AttributeTok{fill=}\StringTok{"steelblue"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-21-1.pdf}}
+
+\section{Heatmap on relationships between rating
+categories}\label{heatmap-on-relationships-between-rating-categories}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("corrplot")}
+\FunctionTok{library}\NormalTok{(corrplot)}
+
+\NormalTok{ratings }\OtherTok{\textless{}{-}}\NormalTok{ df[, }\FunctionTok{c}\NormalTok{(}
+  \StringTok{"rating\_overall"}\NormalTok{,}
+  \StringTok{"rating\_work\_life"}\NormalTok{,}
+  \StringTok{"rating\_culture\_values"}\NormalTok{,}
+  \StringTok{"rating\_compensation\_benefits"}\NormalTok{,}
+  \StringTok{"rating\_senior\_leadership"}\NormalTok{,}
+  \StringTok{"rating\_career\_opportunities"}
+\NormalTok{)]}
+
+\NormalTok{corr\_matrix }\OtherTok{\textless{}{-}} \FunctionTok{cor}\NormalTok{(ratings, }\AttributeTok{use =} \StringTok{"complete.obs"}\NormalTok{)}
+
+\FunctionTok{corrplot}\NormalTok{(corr\_matrix,}
+         \AttributeTok{method =} \StringTok{"color"}\NormalTok{,}
+         \AttributeTok{col =} \FunctionTok{colorRampPalette}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"white"}\NormalTok{, }\StringTok{"red"}\NormalTok{))(}\DecValTok{200}\NormalTok{),}
+         \AttributeTok{type =} \StringTok{"upper"}\NormalTok{,}
+         \AttributeTok{addCoef.col =} \StringTok{"black"}\NormalTok{,}
+         \AttributeTok{tl.col =} \StringTok{"black"}\NormalTok{,}
+         \AttributeTok{tl.srt =} \DecValTok{45}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-22-1.pdf}}
+Rating\_overall is most correlated with Rating\_culture\_values,
+Rating\_senior\_leadership, and Rating\_career\_opportunities, and least
+correlated with Rating\_work\_life and Rating\_compensation\_benefits.
+
+\section{Boxplot on Ratings by Employee
+Status}\label{boxplot-on-ratings-by-employee-status}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(df, }\FunctionTok{aes}\NormalTok{(employee\_status, rating\_overall)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_boxplot}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-23-1.pdf}}
+
+\section{Scatterplot with Trend Line of Rating
+Overall:}\label{scatterplot-with-trend-line-of-rating-overall}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ rating\_date\_clean, }\AttributeTok{y =}\NormalTok{ rating\_overall)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{alpha =} \FloatTok{0.3}\NormalTok{, }\AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_smooth}\NormalTok{(}\AttributeTok{method =} \StringTok{"loess"}\NormalTok{, }\AttributeTok{color =} \StringTok{"red"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Overall Rating Over Time"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Review Date"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Overall Rating"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `geom_smooth()` using formula = 'y ~ x'
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-24-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# another plot for after 2020}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{rating\_year }\OtherTok{\textless{}{-}} \FunctionTok{format}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_date\_clean, }\StringTok{"\%Y"}\NormalTok{)}
+
+\FunctionTok{library}\NormalTok{(dplyr)}
+
+\NormalTok{yearly\_avg }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(rating\_year) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{avg\_rating =} \FunctionTok{mean}\NormalTok{(rating\_overall, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{))}
+
+\FunctionTok{ggplot}\NormalTok{(yearly\_avg, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ rating\_year, }\AttributeTok{y =}\NormalTok{ avg\_rating, }\AttributeTok{group =} \DecValTok{1}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"darkred"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Average Rating by Year"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Year"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Average Overall Rating"}
+\NormalTok{  ) }\SpecialCharTok{+} \FunctionTok{ylim}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-25-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Same plot but we will only see from year 2020 and after}
+\NormalTok{yearly\_avg\_filtered }\OtherTok{\textless{}{-}}\NormalTok{ yearly\_avg }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}\FunctionTok{as.numeric}\NormalTok{(rating\_year) }\SpecialCharTok{\textgreater{}} \DecValTok{2020}\NormalTok{)}
+
+\FunctionTok{ggplot}\NormalTok{(yearly\_avg\_filtered, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ rating\_year, }\AttributeTok{y =}\NormalTok{ avg\_rating, }\AttributeTok{group =} \DecValTok{1}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"darkred"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Average Rating by Year (After 2020)"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Year"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Average Overall Rating"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{coord\_cartesian}\NormalTok{(}\AttributeTok{ylim =} \FunctionTok{c}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DecValTok{5}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-25-2.pdf}}
+Observations from the line graph: average employee ratings decline from
+\textasciitilde2015--2018 and then rise starting around 2019. Some
+plausible explanations: 1️⃣ Changes in the Labor Market (Macroeconomic
+Effects)
+
+Employee sentiment often correlates with economic cycles.
+
+2015--2018
+
+During strong labor markets:
+
+unemployment fell steadily in many economies (e.g., U.S. unemployment
+dropped from \textasciitilde5.3\% in 2015 to \textasciitilde3.9\% in
+2018)
+
+employees had more outside options
+
+When employees have better alternatives, they:
+
+become more critical of employers
+
+expect higher pay, benefits, flexibility
+
+So reviews may become more negative.
+
+After 2019
+
+Several factors could cause ratings to increase:
+
+companies improving benefits (remote work, flexibility)
+
+economic uncertainty making employees more appreciative of stable jobs
+
+workplace reforms
+
+This is why researchers sometimes study:
+
+``Does employee satisfaction decrease when the labor market is strong?''
+
+2️⃣ Platform / User Behavior Effects (Selection Bias)
+
+Glassdoor-type review platforms often experience changes in who leaves
+reviews.
+
+Possible scenarios:
+
+Early years
+
+Mostly dissatisfied employees leave reviews.
+
+Later years
+
+Companies encourage employees to leave reviews.
+
+Example:
+
+HR campaigns
+
+onboarding prompts
+
+employer branding initiatives
+
+This increases the share of positive reviews, which raises the average
+rating.
+
+This is a classic review selection bias.
+
+3️⃣ Changes in Company Policies
+
+Around the late 2010s many companies introduced:
+
+better work-life balance policies
+
+diversity \& inclusion initiatives
+
+remote work flexibility
+
+improved benefits packages
+
+These reforms could improve employee sentiment starting around 2019.
+
+4️⃣ Generational / Cultural Changes in Workplaces
+
+Workplace expectations evolved rapidly after 2018:
+
+Examples:
+
+flexible work arrangements
+
+mental health awareness
+
+focus on culture
+
+Companies adapting to these changes may see improving ratings.
+
+\section{Number of reviews over time (by
+year)}\label{number-of-reviews-over-time-by-year}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Convert rating\_year column to numeric}
+\NormalTok{df}\SpecialCharTok{$}\NormalTok{rating\_year }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{rating\_year)}
+
+\CommentTok{\# Count number of reviews per year}
+\NormalTok{reviews\_per\_year }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(rating\_year) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{n\_reviews =} \FunctionTok{n}\NormalTok{())}
+
+\CommentTok{\# Plot it}
+\FunctionTok{ggplot}\NormalTok{(reviews\_per\_year, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \FunctionTok{factor}\NormalTok{(rating\_year), }\AttributeTok{y =}\NormalTok{ n\_reviews)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_bar}\NormalTok{(}\AttributeTok{stat =} \StringTok{"identity"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Number of Reviews by Year"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Year"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Number of Reviews"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-26-1.pdf}}
+
+\section{Heatmap showing patterns of average rating by sector over
+years}\label{heatmap-showing-patterns-of-average-rating-by-sector-over-years}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Compute the yearly average by sector}
+\NormalTok{sector\_year\_avg }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(rating\_year, sector) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{avg\_rating =} \FunctionTok{mean}\NormalTok{(rating\_overall, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `summarise()` has regrouped the output.
+## i Summaries were computed grouped by rating_year and sector.
+## i Output is grouped by rating_year.
+## i Use `summarise(.groups = "drop_last")` to silence this message.
+## i Use `summarise(.by = c(rating_year, sector))` for per-operation grouping
+##   (`?dplyr::dplyr_by`) instead.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Heatmap}
+\FunctionTok{ggplot}\NormalTok{(sector\_year\_avg, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ rating\_year, }\AttributeTok{y =}\NormalTok{ sector, }\AttributeTok{fill =}\NormalTok{ avg\_rating)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_tile}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{scale\_fill\_gradient}\NormalTok{(}\AttributeTok{low =} \StringTok{"white"}\NormalTok{, }\AttributeTok{high =} \StringTok{"red"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Average Rating Heatmap by Sector and Year"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Year"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Sector"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-27-1.pdf}}
+Observations: - Some sectors, such as Finance, Energy/Mining,
+Government, Marketing, and Construction, show higher average ratings
+after 2020. Possible interpretations are workplace policy improvements,
+remote work flexibility, and post-pandemic changes in employee
+expectations. - Healthcare sector shows mixed trends - higher average
+ratings earlier from 2013 to 2015, and appears more moderate later. This
+could have been due to increased stress or workload in later years and
+workforce burnout effects for healthcare professionals post-COVID 19.
+
+\section{Modeling:}\label{modeling}
+
+\section{Question 1: Predict whether an employee will recommend the
+company to their
+friends}\label{question-1-predict-whether-an-employee-will-recommend-the-company-to-their-friends}
+
+\section{Check the target variable
+flags\_recommend\_frend}\label{check-the-target-variable-flags_recommend_frend}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{unique}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend) }\CommentTok{\# 2 levels: NEGATIVE and POSITIVE}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] NEGATIVE POSITIVE
+## Levels: NEGATIVE POSITIVE
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{levels}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "NEGATIVE" "POSITIVE"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{str}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  Factor w/ 2 levels "NEGATIVE","POSITIVE": 1 2 2 1 1 2 1 1 1 1 ...
+\end{verbatim}
+
+flags\_recommend\_frend column is a binary categorical variable, and is
+a factor -\textgreater{} ready for the modeling.
+
+\section{Model 1: Logistic
+Regression}\label{model-1-logistic-regression}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{table}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend, }\AttributeTok{useNA =} \StringTok{"ifany"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## NEGATIVE POSITIVE 
+##      692      308
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{str}\NormalTok{(df}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  Factor w/ 2 levels "NEGATIVE","POSITIVE": 1 2 2 1 1 2 1 1 1 1 ...
+\end{verbatim}
+
+confirms this is a binary classification problem, and the target
+variable is a factor with 2 levels ``positive'' and ``negative''.
+
+\section{Step 1: Select Predictor Variables and Remove Missing Data
+(because logistic regression cannot handle missing
+data)}\label{step-1-select-predictor-variables-and-remove-missing-data-because-logistic-regression-cannot-handle-missing-data}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{data }\OtherTok{\textless{}{-}}\NormalTok{ df[, }\FunctionTok{c}\NormalTok{(}
+\StringTok{"flags\_recommend\_frend"}\NormalTok{, }
+\StringTok{"employee\_length"}\NormalTok{,}
+\StringTok{"employee\_type1"}\NormalTok{,}
+\StringTok{"flags\_business\_outlook"}\NormalTok{,}
+\StringTok{"flags\_ceo\_approval"}\NormalTok{,}
+\StringTok{"rating\_overall"}\NormalTok{,}
+\StringTok{"rating\_work\_life"}\NormalTok{,}
+\StringTok{"rating\_culture\_values"}\NormalTok{,}
+\StringTok{"rating\_compensation\_benefits"}\NormalTok{,}
+\StringTok{"rating\_senior\_leadership"}\NormalTok{,}
+\StringTok{"rating\_diversity\_inclusion"}
+\NormalTok{)]}
+
+\NormalTok{data }\OtherTok{\textless{}{-}} \FunctionTok{na.omit}\NormalTok{(data)}
+
+\FunctionTok{dim}\NormalTok{(data)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 984  11
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{names}\NormalTok{(data)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  [1] "flags_recommend_frend"        "employee_length"             
+##  [3] "employee_type1"               "flags_business_outlook"      
+##  [5] "flags_ceo_approval"           "rating_overall"              
+##  [7] "rating_work_life"             "rating_culture_values"       
+##  [9] "rating_compensation_benefits" "rating_senior_leadership"    
+## [11] "rating_diversity_inclusion"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# check class proportion before splitting}
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6890244 0.3109756
+\end{verbatim}
+
+\section{Step 2: Split the dataset into 80\% training and 20\%
+testing}\label{step-2-split-the-dataset-into-80-training-and-20-testing}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(caret)}
+
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+
+\NormalTok{train\_index }\OtherTok{\textless{}{-}} \FunctionTok{createDataPartition}\NormalTok{(}
+\NormalTok{  data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{p =} \FloatTok{0.8}\NormalTok{,}
+  \AttributeTok{list =} \ConstantTok{FALSE}
+\NormalTok{)}
+
+\NormalTok{train.data }\OtherTok{\textless{}{-}}\NormalTok{ data[train\_index, ]}
+\NormalTok{test.data }\OtherTok{\textless{}{-}}\NormalTok{ data[}\SpecialCharTok{{-}}\NormalTok{train\_index, ]}
+
+\CommentTok{\# Check class imbalance after splitting}
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(train.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6890863 0.3109137
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6887755 0.3112245
+\end{verbatim}
+
+The class proportions (approximately 70\% negative and 30\% positive)
+were preserved in both training and testing sets. This guarantees that
+the model is trained and evaluated on representative data, leading to
+reliable performance estimates.
+
+\section{Step 3: Fit the logistic regression
+model}\label{step-3-fit-the-logistic-regression-model}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{model\_logit }\OtherTok{\textless{}{-}} \FunctionTok{glm}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{.,}
+  \AttributeTok{data =}\NormalTok{ train.data,}
+  \AttributeTok{family =}\NormalTok{ binomial}
+\NormalTok{)}
+
+\FunctionTok{summary}\NormalTok{(model\_logit)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Call:
+## glm(formula = flags_recommend_frend ~ ., family = binomial, data = train.data)
+## 
+## Coefficients:
+##                                Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)                    -5.84260    2.19826  -2.658 0.007865 ** 
+## employee_length                 0.03915    0.02967   1.319 0.187039    
+## employee_type1Former           -1.41234    0.67220  -2.101 0.035633 *  
+## flags_business_outlookNEUTRAL   1.05261    0.46606   2.259 0.023912 *  
+## flags_business_outlookPOSITIVE  2.21467    0.45981   4.816 1.46e-06 ***
+## flags_ceo_approvalAPPROVE       0.08293    2.10349   0.039 0.968553    
+## flags_ceo_approvalDISAPPROVE   -0.91949    2.11274  -0.435 0.663408    
+## flags_ceo_approvalNO_OPINION   -0.02137    2.10023  -0.010 0.991883    
+## rating_overall                  0.98544    0.19669   5.010 5.44e-07 ***
+## rating_work_life                0.31721    0.12467   2.544 0.010947 *  
+## rating_culture_values           0.55428    0.16541   3.351 0.000805 ***
+## rating_compensation_benefits   -0.02665    0.14859  -0.179 0.857633    
+## rating_senior_leadership        0.16282    0.15796   1.031 0.302672    
+## rating_diversity_inclusion     -0.14527    0.15094  -0.962 0.335817    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 976.85  on 787  degrees of freedom
+## Residual deviance: 318.91  on 774  degrees of freedom
+## AIC: 346.91
+## 
+## Number of Fisher Scoring iterations: 7
+\end{verbatim}
+
+Interpretations of the logistic regression model summary: 1.
+Coefficients: positive coefficient → increases probability of
+recommending negative coefficient → decreases probability
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  p-values: Per the model summary, flags\_business\_outlookPOSITIVE,
+  rating\_overall, flags\_ceo\_approvalDISAPPROVE (decreases the
+  probability an employee recommends the company), rating\_work\_life,
+  rating\_culture\_values, flags\_business\_outlookNEUTRAL are
+  statistically significant predictors for whether a person recommends a
+  company, 5\% significance level.
+\end{enumerate}
+
+\section{Odds-ratio: Converts log-odds
+coefficients}\label{odds-ratio-converts-log-odds-coefficients}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{exp}\NormalTok{(}\FunctionTok{coef}\NormalTok{(model\_logit))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##                    (Intercept)                employee_length 
+##                    0.002901291                    1.039924640 
+##           employee_type1Former  flags_business_outlookNEUTRAL 
+##                    0.243571502                    2.865116600 
+## flags_business_outlookPOSITIVE      flags_ceo_approvalAPPROVE 
+##                    9.158384884                    1.086462499 
+##   flags_ceo_approvalDISAPPROVE   flags_ceo_approvalNO_OPINION 
+##                    0.398720893                    0.978861510 
+##                 rating_overall               rating_work_life 
+##                    2.678997617                    1.373295293 
+##          rating_culture_values   rating_compensation_benefits 
+##                    1.740692980                    0.973697461 
+##       rating_senior_leadership     rating_diversity_inclusion 
+##                    1.176822125                    0.864787691
+\end{verbatim}
+
+Interpretation:
+
+Odds ratios show how a one-unit increase in a predictor multiplicatively
+changes the odds of the outcome. A one-point increase in overall rating
+makes employees 2.68 times more likely to recommend the company, or a
+one-point increase in flags\_business\_outlookPOSITIVE makes employees
+9.16 times more likely to recommend the company.
+
+\section{Step 4: Predict on test
+data}\label{step-4-predict-on-test-data}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{log\_pred\_prob }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(model\_logit, test.data, }\AttributeTok{type =} \StringTok{"response"}\NormalTok{)}
+\NormalTok{log\_pred\_prob}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##           1           2           3           4           5           6 
+## 0.007574263 0.980585793 0.620263985 0.001856029 0.046558475 0.001856029 
+##           7           8           9          10          11          12 
+## 0.989632776 0.024417363 0.532482999 0.010698829 0.002256419 0.031940950 
+##          13          14          15          16          17          18 
+## 0.988323140 0.004724858 0.005365660 0.095383400 0.955970964 0.454993905 
+##          19          20          21          22          23          24 
+## 0.439150657 0.046500729 0.088051164 0.002086843 0.962666073 0.202869408 
+##          25          26          27          28          29          30 
+## 0.299433268 0.710298896 0.006867094 0.272726572 0.534615301 0.001856029 
+##          31          32          33          34          35          36 
+## 0.559358447 0.943435019 0.013004492 0.097555841 0.006570287 0.121807628 
+##          37          38          39          40          41          42 
+## 0.018079831 0.972801837 0.924126365 0.005669786 0.973142553 0.001929987 
+##          43          44          45          46          47          48 
+## 0.007737861 0.022685314 0.072248773 0.418510035 0.994192338 0.001856029 
+##          49          50          51          52          53          54 
+## 0.078273536 0.815788567 0.005908566 0.064875947 0.004460841 0.002086843 
+##          55          56          57          58          59          60 
+## 0.009161143 0.946560251 0.806668874 0.101030013 0.049701267 0.008938675 
+##          61          62          63          64          65          66 
+## 0.106170578 0.995632846 0.004956849 0.088076545 0.005800122 0.002086843 
+##          67          68          69          70          71          72 
+## 0.147243041 0.001879319 0.001291528 0.373195086 0.320124623 0.025806792 
+##          73          74          75          76          77          78 
+## 0.001929987 0.531038664 0.644317922 0.163593008 0.046167549 0.173947358 
+##          79          80          81          82          83          84 
+## 0.275294036 0.752337882 0.016898264 0.982994254 0.142237505 0.004724858 
+##          85          86          87          88          89          90 
+## 0.302644936 0.003928398 0.001829978 0.241431069 0.794387863 0.004724858 
+##          91          92          93          94          95          96 
+## 0.546106509 0.492480323 0.059551573 0.933706287 0.972913277 0.596225567 
+##          97          98          99         100         101         102 
+## 0.038487280 0.005299393 0.001929987 0.934475449 0.002086843 0.924997748 
+##         103         104         105         106         107         108 
+## 0.015889208 0.394133694 0.012871917 0.001169596 0.001856029 0.987384137 
+##         109         110         111         112         113         114 
+## 0.004126282 0.029920988 0.001369195 0.001929987 0.831772733 0.077097979 
+##         115         116         117         118         119         120 
+## 0.997891997 0.005967946 0.746242313 0.006617111 0.001929987 0.076640715 
+##         121         122         123         124         125         126 
+## 0.988891286 0.023425827 0.098411090 0.018300461 0.724020226 0.789015361 
+##         127         128         129         130         131         132 
+## 0.003494612 0.342257976 0.005571128 0.002415201 0.288524931 0.756552496 
+##         133         134         135         136         137         138 
+## 0.002536899 0.002086843 0.172533943 0.986983656 0.633790869 0.011450937 
+##         139         140         141         142         143         144 
+## 0.008704066 0.984033819 0.002863137 0.787026427 0.001856029 0.969319231 
+##         145         146         147         148         149         150 
+## 0.004929257 0.029545100 0.885191577 0.961466868 0.199264584 0.882399839 
+##         151         152         153         154         155         156 
+## 0.960093930 0.584810507 0.497635127 0.004277387 0.351069087 0.100300188 
+##         157         158         159         160         161         162 
+## 0.016490978 0.001929987 0.231404938 0.957217941 0.021815247 0.139996944 
+##         163         164         165         166         167         168 
+## 0.001929987 0.744743711 0.011362410 0.372007497 0.123191749 0.866313566 
+##         169         170         171         172         173         174 
+## 0.001951950 0.003309316 0.973592310 0.059873155 0.988639947 0.017398291 
+##         175         176         177         178         179         180 
+## 0.788478503 0.001856029 0.002644133 0.001929987 0.001929987 0.971249625 
+##         181         182         183         184         185         186 
+## 0.296637885 0.240956934 0.274753631 0.204536910 0.986887058 0.007883797 
+##         187         188         189         190         191         192 
+## 0.001856029 0.048541751 0.913065526 0.017189667 0.924997748 0.003014931 
+##         193         194         195         196 
+## 0.547615487 0.890894889 0.009303141 0.499053166
+\end{verbatim}
+
+These are probabilities of recommending the company.
+
+\section{Step 5: Evaluate different classification thresholds to select
+the best one using F1
+scores}\label{step-5-evaluate-different-classification-thresholds-to-select-the-best-one-using-f1-scores}
+
+\section{F1 = 2 * (precision * recall) / (precision +
+recall)}\label{f1-2-precision-recall-precision-recall}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 5.1: Create a Sequence of Thresholds}
+\NormalTok{thresholds }\OtherTok{\textless{}{-}} \FunctionTok{seq}\NormalTok{(}\FloatTok{0.1}\NormalTok{, }\FloatTok{1.0}\NormalTok{, }\AttributeTok{by =} \FloatTok{0.1}\NormalTok{)}
+
+\CommentTok{\# Step 5.2: Define a function to calculate F1 score}
+\NormalTok{f1\_score }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(actual, predicted) \{}
+
+\NormalTok{  tp }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(actual }\SpecialCharTok{==} \StringTok{"POSITIVE"} \SpecialCharTok{\&}\NormalTok{ predicted }\SpecialCharTok{==} \StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{  fp }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(actual }\SpecialCharTok{==} \StringTok{"NEGATIVE"} \SpecialCharTok{\&}\NormalTok{ predicted }\SpecialCharTok{==} \StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{  fn }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(actual }\SpecialCharTok{==} \StringTok{"POSITIVE"} \SpecialCharTok{\&}\NormalTok{ predicted }\SpecialCharTok{==} \StringTok{"NEGATIVE"}\NormalTok{)}
+
+\NormalTok{  precision }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{((tp }\SpecialCharTok{+}\NormalTok{ fp) }\SpecialCharTok{==} \DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, tp }\SpecialCharTok{/}\NormalTok{ (tp }\SpecialCharTok{+}\NormalTok{ fp))}
+\NormalTok{  recall }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{((tp }\SpecialCharTok{+}\NormalTok{ fn) }\SpecialCharTok{==} \DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, tp }\SpecialCharTok{/}\NormalTok{ (tp }\SpecialCharTok{+}\NormalTok{ fn))}
+
+  \ControlFlowTok{if}\NormalTok{ (precision }\SpecialCharTok{+}\NormalTok{ recall }\SpecialCharTok{==} \DecValTok{0}\NormalTok{) }\FunctionTok{return}\NormalTok{(}\DecValTok{0}\NormalTok{)}
+
+\NormalTok{  f1 }\OtherTok{\textless{}{-}} \DecValTok{2} \SpecialCharTok{*}\NormalTok{ precision }\SpecialCharTok{*}\NormalTok{ recall }\SpecialCharTok{/}\NormalTok{ (precision }\SpecialCharTok{+}\NormalTok{ recall)}
+
+  \FunctionTok{return}\NormalTok{(f1)}
+\NormalTok{\}}
+
+\CommentTok{\# Step 5.3: Loop Through Thresholds}
+\NormalTok{f1\_results }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{threshold =}\NormalTok{ thresholds, }\AttributeTok{F1 =} \ConstantTok{NA}\NormalTok{)}
+
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \FunctionTok{seq\_along}\NormalTok{(thresholds)) \{}
+  
+\NormalTok{  t }\OtherTok{\textless{}{-}}\NormalTok{ thresholds[i]}
+  
+\NormalTok{  pred\_class }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(log\_pred\_prob }\SpecialCharTok{\textgreater{}}\NormalTok{ t, }\StringTok{"POSITIVE"}\NormalTok{, }\StringTok{"NEGATIVE"}\NormalTok{)}
+  
+\NormalTok{  f1\_results}\SpecialCharTok{$}\NormalTok{F1[i] }\OtherTok{\textless{}{-}} \FunctionTok{f1\_score}\NormalTok{(test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend, pred\_class)}
+\NormalTok{\}}
+
+\CommentTok{\# Step 5.4: Print F1 scores}
+\FunctionTok{print}\NormalTok{(f1\_results)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    threshold        F1
+## 1        0.1 0.7133758
+## 2        0.2 0.7586207
+## 3        0.3 0.8059701
+## 4        0.4 0.8503937
+## 5        0.5 0.8264463
+## 6        0.6 0.7964602
+## 7        0.7 0.8000000
+## 8        0.8 0.7000000
+## 9        0.9 0.6451613
+## 10       1.0 0.0000000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 5.5: Choose the threshold with the best F1 score}
+\NormalTok{best\_threshold }\OtherTok{\textless{}{-}}\NormalTok{ f1\_results}\SpecialCharTok{$}\NormalTok{threshold[}\FunctionTok{which.max}\NormalTok{(f1\_results}\SpecialCharTok{$}\NormalTok{F1)]}
+\NormalTok{best\_f1 }\OtherTok{\textless{}{-}} \FunctionTok{max}\NormalTok{(f1\_results}\SpecialCharTok{$}\NormalTok{F1)}
+
+\NormalTok{best\_threshold}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0.4
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{best\_f1}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0.8503937
+\end{verbatim}
+
+Threshold of 0.4 produces the highest F1 score of 0.85
+
+\section{Step 6: Convert Probabilities to Class Predictions using
+threshold of
+0.4}\label{step-6-convert-probabilities-to-class-predictions-using-threshold-of-0.4}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{log\_pred\_class }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(log\_pred\_prob }\SpecialCharTok{\textgreater{}}\NormalTok{ best\_f1, }\StringTok{"POSITIVE"}\NormalTok{, }\StringTok{"NEGATIVE"}\NormalTok{)}
+
+\CommentTok{\# Convert to factor}
+\NormalTok{log\_pred\_class }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(log\_pred\_class)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Step 7: Evaluate Model
+Performance}\label{step-7-evaluate-model-performance}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{logistic\_cm }\OtherTok{\textless{}{-}} \FunctionTok{confusionMatrix}\NormalTok{(log\_pred\_class, test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\NormalTok{logistic\_cm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction NEGATIVE POSITIVE
+##   NEGATIVE      131       29
+##   POSITIVE        4       32
+##                                           
+##                Accuracy : 0.8316          
+##                  95% CI : (0.7718, 0.8812)
+##     No Information Rate : 0.6888          
+##     P-Value [Acc > NIR] : 3.892e-06       
+##                                           
+##                   Kappa : 0.5576          
+##                                           
+##  Mcnemar's Test P-Value : 2.943e-05       
+##                                           
+##             Sensitivity : 0.9704          
+##             Specificity : 0.5246          
+##          Pos Pred Value : 0.8187          
+##          Neg Pred Value : 0.8889          
+##              Prevalence : 0.6888          
+##          Detection Rate : 0.6684          
+##    Detection Prevalence : 0.8163          
+##       Balanced Accuracy : 0.7475          
+##                                           
+##        'Positive' Class : NEGATIVE        
+## 
+\end{verbatim}
+
+Logistic regression has Accuracy of 0.8776
+
+\section{Step 8: ROC Curve and AUC}\label{step-8-roc-curve-and-auc}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(pROC)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Type 'citation("pROC")' for a citation.
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'pROC'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:stats':
+## 
+##     cov, smooth, var
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{log\_roc\_curve }\OtherTok{\textless{}{-}} \FunctionTok{roc}\NormalTok{(test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend, log\_pred\_prob)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Setting levels: control = NEGATIVE, case = POSITIVE
+\end{verbatim}
+
+\begin{verbatim}
+## Setting direction: controls < cases
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(log\_roc\_curve)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-38-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{auc}\NormalTok{(log\_roc\_curve)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Area under the curve: 0.9403
+\end{verbatim}
+
+Logistic Regression has AUC of 0.9403.
+
+\section{Model 2: Decision Tree:}\label{model-2-decision-tree}
+
+\section{Step 1 --- Load Required Packages for Decision Tree
+Classification}\label{step-1-load-required-packages-for-decision-tree-classification}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# {-}{-}{-}{-} 0. Install / load packages {-}{-}{-}{-}}
+\NormalTok{pkg\_needed }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"caret"}\NormalTok{, }\StringTok{"rpart"}\NormalTok{, }\StringTok{"rattle"}\NormalTok{)}
+\ControlFlowTok{for}\NormalTok{ (p }\ControlFlowTok{in}\NormalTok{ pkg\_needed) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\SpecialCharTok{!}\FunctionTok{requireNamespace}\NormalTok{(p, }\AttributeTok{quietly =} \ConstantTok{TRUE}\NormalTok{)) \{}
+    \FunctionTok{install.packages}\NormalTok{(p)}
+\NormalTok{  \}}
+\NormalTok{\}}
+
+\CommentTok{\#install.packages("bitops")}
+\CommentTok{\#install.packages("ggplot2")}
+\CommentTok{\#install.packages("lattice")}
+\CommentTok{\#install.packages("Matrix")}
+\CommentTok{\#install.packages("rpart.plot")}
+\FunctionTok{library}\NormalTok{(caret)}
+\FunctionTok{library}\NormalTok{(rpart)}
+\FunctionTok{library}\NormalTok{(rattle)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: bitops
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'bitops'
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:Matrix':
+## 
+##     %&%
+\end{verbatim}
+
+\begin{verbatim}
+## Rattle: A free graphical interface for data science with R.
+## Version 5.6.2 Copyright (c) 2006-2023 Togaware Pty Ltd.
+## Type 'rattle()' to shake, rattle, and roll your data.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(rpart.plot)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Train the Decision Tree}\label{train-the-decision-tree}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Fit the initial tree}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{tree\_model }\OtherTok{\textless{}{-}} \FunctionTok{rpart}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .,}
+  \AttributeTok{data =}\NormalTok{ train.data,}
+  \AttributeTok{method =} \StringTok{"class"}\NormalTok{, }
+  \AttributeTok{control =} \FunctionTok{rpart.control}\NormalTok{(}\AttributeTok{cp =} \DecValTok{0}\NormalTok{, }\AttributeTok{xval =} \DecValTok{10}\NormalTok{, }\AttributeTok{minsplit =} \DecValTok{2}\NormalTok{, }\AttributeTok{minbucket =} \DecValTok{1}\NormalTok{)}
+\NormalTok{)}
+
+\CommentTok{\# Visualize the tree}
+\FunctionTok{rpart.plot}\NormalTok{(tree\_model, }\AttributeTok{main =} \StringTok{"Initial Tree"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: labs do not fit even at cex 0.15, there may be some overplotting
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-40-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Check CP table}
+\FunctionTok{printcp}\NormalTok{(tree\_model)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Classification tree:
+## rpart(formula = flags_recommend_frend ~ ., data = train.data, 
+##     method = "class", control = rpart.control(cp = 0, xval = 10, 
+##         minsplit = 2, minbucket = 1))
+## 
+## Variables actually used in tree construction:
+##  [1] employee_length              employee_type1              
+##  [3] flags_business_outlook       flags_ceo_approval          
+##  [5] rating_compensation_benefits rating_culture_values       
+##  [7] rating_diversity_inclusion   rating_overall              
+##  [9] rating_senior_leadership     rating_work_life            
+## 
+## Root node error: 245/788 = 0.31091
+## 
+## n= 788 
+## 
+##            CP nsplit rel error  xerror     xstd
+## 1  0.66122449      0 1.0000000 1.00000 0.053034
+## 2  0.03061224      1 0.3387755 0.33878 0.035173
+## 3  0.01224490      3 0.2775510 0.29796 0.033219
+## 4  0.00816327      4 0.2653061 0.30612 0.033624
+## 5  0.00408163      8 0.2326531 0.31837 0.034217
+## 6  0.00306122     22 0.1673469 0.34286 0.035359
+## 7  0.00272109     26 0.1551020 0.36327 0.036266
+## 8  0.00233236     38 0.1224490 0.37143 0.036619
+## 9  0.00204082     45 0.1061224 0.38367 0.037138
+## 10 0.00174927     59 0.0775510 0.39184 0.037477
+## 11 0.00163265     66 0.0653061 0.41224 0.038301
+## 12 0.00136054     72 0.0530612 0.44082 0.039404
+## 13 0.00102041     90 0.0285714 0.44082 0.039404
+## 14 0.00090703     97 0.0204082 0.46531 0.040304
+## 15 0.00081633    108 0.0081633 0.46531 0.040304
+## 16 0.00000000    113 0.0040816 0.46531 0.040304
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Select the best CP value}
+\NormalTok{best\_cp }\OtherTok{\textless{}{-}}\NormalTok{ tree\_model}\SpecialCharTok{$}\NormalTok{cptable[}
+  \FunctionTok{which.min}\NormalTok{(tree\_model}\SpecialCharTok{$}\NormalTok{cptable[, }\StringTok{"xerror"}\NormalTok{]),}
+  \StringTok{"CP"}
+\NormalTok{]}
+
+\FunctionTok{cat}\NormalTok{(}\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{Best CP value:"}\NormalTok{, best\_cp, }\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Best CP value: 0.0122449
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Prune the tree using best CP value}
+\NormalTok{pruned\_tree }\OtherTok{\textless{}{-}} \FunctionTok{prune}\NormalTok{(tree\_model, }\AttributeTok{cp =}\NormalTok{ best\_cp)}
+
+\CommentTok{\# Visualize the pruned tree}
+\FunctionTok{fancyRpartPlot}\NormalTok{(pruned\_tree, }\AttributeTok{main =} \StringTok{"Optimal Pruned Tree"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-40-2.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Predict on test data}
+\NormalTok{pred\_test }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(pruned\_tree, }\AttributeTok{newdata =}\NormalTok{ test.data, }\AttributeTok{type =} \StringTok{"class"}\NormalTok{)}
+
+\CommentTok{\# Confusion Matrix and Metrics}
+\NormalTok{pruned\_tree\_cm }\OtherTok{\textless{}{-}} \FunctionTok{confusionMatrix}\NormalTok{(pred\_test, test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\NormalTok{pruned\_tree\_cm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction NEGATIVE POSITIVE
+##   NEGATIVE      124        9
+##   POSITIVE       11       52
+##                                           
+##                Accuracy : 0.898           
+##                  95% CI : (0.8468, 0.9365)
+##     No Information Rate : 0.6888          
+##     P-Value [Acc > NIR] : 3.228e-12       
+##                                           
+##                   Kappa : 0.7641          
+##                                           
+##  Mcnemar's Test P-Value : 0.8231          
+##                                           
+##             Sensitivity : 0.9185          
+##             Specificity : 0.8525          
+##          Pos Pred Value : 0.9323          
+##          Neg Pred Value : 0.8254          
+##              Prevalence : 0.6888          
+##          Detection Rate : 0.6327          
+##    Detection Prevalence : 0.6786          
+##       Balanced Accuracy : 0.8855          
+##                                           
+##        'Positive' Class : NEGATIVE        
+## 
+\end{verbatim}
+
+Observations: - Overall rating is the dominant driver of recommendation
+- rating overall and flags business outlook are the strongest variables
+to make good predictions. - Many rating variables are likely highly
+correlated with rating\_overall, so the tree doesn't need them.
+
+\section{ROC curve and AUC for pruned
+tree}\label{roc-curve-and-auc-for-pruned-tree}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# ROC and AUC for pruned tree}
+\CommentTok{\#install.packages("pROC")}
+\FunctionTok{library}\NormalTok{(pROC)}
+
+\CommentTok{\# Make sure outcome levels are ordered correctly}
+\NormalTok{test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend }\OtherTok{\textless{}{-}} \FunctionTok{factor}\NormalTok{(}
+\NormalTok{  test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{)}
+
+\CommentTok{\# Predicted probabilities}
+\NormalTok{pred\_prob }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(pruned\_tree, }\AttributeTok{newdata =}\NormalTok{ test.data, }\AttributeTok{type =} \StringTok{"prob"}\NormalTok{)}
+
+\CommentTok{\# Probability of positive class}
+\NormalTok{pred\_prob\_positive }\OtherTok{\textless{}{-}}\NormalTok{ pred\_prob[, }\StringTok{"POSITIVE"}\NormalTok{]}
+
+\CommentTok{\# ROC curve}
+\NormalTok{roc\_pruned\_tree }\OtherTok{\textless{}{-}} \FunctionTok{roc}\NormalTok{(}
+  \AttributeTok{response =}\NormalTok{ test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{predictor =}\NormalTok{ pred\_prob\_positive,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{),}
+  \AttributeTok{direction =} \StringTok{"\textless{}"}
+\NormalTok{)}
+
+\CommentTok{\# AUC}
+\NormalTok{auc\_pruned\_tree }\OtherTok{\textless{}{-}} \FunctionTok{auc}\NormalTok{(roc\_pruned\_tree)}
+\NormalTok{auc\_pruned\_tree}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Area under the curve: 0.9056
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Plot ROC}
+\FunctionTok{plot}\NormalTok{(}
+\NormalTok{  roc\_pruned\_tree,}
+  \AttributeTok{col =} \StringTok{"blue"}\NormalTok{,}
+  \AttributeTok{lwd =} \DecValTok{2}\NormalTok{,}
+  \AttributeTok{main =} \StringTok{"ROC Curve {-} Pruned Decision Tree"}
+\NormalTok{)}
+
+\CommentTok{\# Add diagonal reference line}
+\FunctionTok{abline}\NormalTok{(}\AttributeTok{a =} \DecValTok{0}\NormalTok{, }\AttributeTok{b =} \DecValTok{1}\NormalTok{, }\AttributeTok{lty =} \DecValTok{2}\NormalTok{, }\AttributeTok{col =} \StringTok{"gray"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-41-1.pdf}}
+Pruned Decision tree has AUC of 0.9056
+
+\section{Random forest:}\label{random-forest}
+
+\section{Step 1: Import Random Forest
+package}\label{step-1-import-random-forest-package}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("randomForest")}
+\CommentTok{\#install.packages("ggplot2")}
+\FunctionTok{library}\NormalTok{(randomForest)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## randomForest 4.7-1.2
+\end{verbatim}
+
+\begin{verbatim}
+## Type rfNews() to see new features/changes/bug fixes.
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'randomForest'
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:rattle':
+## 
+##     importance
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:dplyr':
+## 
+##     combine
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:ggplot2':
+## 
+##     margin
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(caret)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Step 5: Fit the random forest
+model}\label{step-5-fit-the-random-forest-model}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Train Random Forest with 10{-}fold CV}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+
+\NormalTok{p }\OtherTok{\textless{}{-}} \FunctionTok{ncol}\NormalTok{(train.data) }\SpecialCharTok{{-}} \DecValTok{1}
+
+\NormalTok{rf\_model }\OtherTok{\textless{}{-}} \FunctionTok{train}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .,}
+  \AttributeTok{data =}\NormalTok{ train.data,}
+  \AttributeTok{method =} \StringTok{"rf"}\NormalTok{,}
+  \AttributeTok{trControl =} \FunctionTok{trainControl}\NormalTok{(}\AttributeTok{method =} \StringTok{"cv"}\NormalTok{, }\AttributeTok{number =} \DecValTok{10}\NormalTok{),}
+  \AttributeTok{tuneGrid =} \FunctionTok{expand.grid}\NormalTok{(}\AttributeTok{mtry =} \DecValTok{1}\SpecialCharTok{:}\NormalTok{p),}
+  \AttributeTok{ntree =} \DecValTok{500}\NormalTok{,}
+  \AttributeTok{importance =} \ConstantTok{TRUE}
+\NormalTok{)}
+
+\CommentTok{\# Find the best mtry}
+\NormalTok{bestTune }\OtherTok{\textless{}{-}}\NormalTok{ rf\_model}\SpecialCharTok{$}\NormalTok{bestTune}
+\NormalTok{bestTune}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   mtry
+## 3    3
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Refit the model with the best mtry}
+\NormalTok{rf\_model\_tuned }\OtherTok{\textless{}{-}} \FunctionTok{train}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .,}
+  \AttributeTok{data =}\NormalTok{ train.data,}
+  \AttributeTok{method =} \StringTok{"rf"}\NormalTok{,}
+  \AttributeTok{trControl =} \FunctionTok{trainControl}\NormalTok{(}
+    \AttributeTok{method =} \StringTok{"cv"}\NormalTok{,}
+    \AttributeTok{number =} \DecValTok{10}\NormalTok{,}
+    \AttributeTok{classProbs =} \ConstantTok{TRUE}\NormalTok{,}
+    \AttributeTok{summaryFunction =}\NormalTok{ twoClassSummary}
+\NormalTok{  ),}
+  \AttributeTok{tuneGrid =} \FunctionTok{expand.grid}\NormalTok{(}\AttributeTok{mtry =}\NormalTok{ bestTune),  }\CommentTok{\# 👈 use your chosen mtry}
+  \AttributeTok{ntree =} \DecValTok{500}\NormalTok{,}
+  \AttributeTok{metric =} \StringTok{"ROC"}\NormalTok{,}
+  \AttributeTok{importance =} \ConstantTok{TRUE}
+\NormalTok{)}
+
+\CommentTok{\# Variable importance plots}
+\FunctionTok{varImpPlot}\NormalTok{(rf\_model\_tuned}\SpecialCharTok{$}\NormalTok{finalModel, }\AttributeTok{type =} \DecValTok{1}\NormalTok{, }\AttributeTok{main =} \StringTok{"Mean Decrease Accuracy (MSE)"}\NormalTok{)  }\CommentTok{\# Mean Decrease Accuracy (MSE)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-43-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{varImpPlot}\NormalTok{(rf\_model\_tuned}\SpecialCharTok{$}\NormalTok{finalModel, }\AttributeTok{type =} \DecValTok{2}\NormalTok{, }\AttributeTok{main =} \StringTok{"Mean Decrease Node Impurity"}\NormalTok{)  }\CommentTok{\# Mean Decrease Node Impurity}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-43-2.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Predict on test data}
+\NormalTok{pred\_test }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(rf\_model\_tuned, test.data)}
+
+\CommentTok{\# Confusion matrix and metrics}
+\NormalTok{cm }\OtherTok{\textless{}{-}} \FunctionTok{confusionMatrix}\NormalTok{(}
+\NormalTok{  pred\_test,}
+\NormalTok{  test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend}
+\NormalTok{)}
+
+\NormalTok{cm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction NEGATIVE POSITIVE
+##   NEGATIVE      121       12
+##   POSITIVE       14       49
+##                                           
+##                Accuracy : 0.8673          
+##                  95% CI : (0.8117, 0.9115)
+##     No Information Rate : 0.6888          
+##     P-Value [Acc > NIR] : 5.084e-09       
+##                                           
+##                   Kappa : 0.6933          
+##                                           
+##  Mcnemar's Test P-Value : 0.8445          
+##                                           
+##             Sensitivity : 0.8963          
+##             Specificity : 0.8033          
+##          Pos Pred Value : 0.9098          
+##          Neg Pred Value : 0.7778          
+##              Prevalence : 0.6888          
+##          Detection Rate : 0.6173          
+##    Detection Prevalence : 0.6786          
+##       Balanced Accuracy : 0.8498          
+##                                           
+##        'Positive' Class : NEGATIVE        
+## 
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Metrics}
+\NormalTok{sensitivity }\OtherTok{\textless{}{-}}\NormalTok{ cm}\SpecialCharTok{$}\NormalTok{byClass[}\StringTok{"Sensitivity"}\NormalTok{]}
+\NormalTok{specificity }\OtherTok{\textless{}{-}}\NormalTok{ cm}\SpecialCharTok{$}\NormalTok{byClass[}\StringTok{"Specificity"}\NormalTok{]}
+\NormalTok{accuracy    }\OtherTok{\textless{}{-}}\NormalTok{ cm}\SpecialCharTok{$}\NormalTok{overall[}\StringTok{"Accuracy"}\NormalTok{]}
+
+\NormalTok{sensitivity}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Sensitivity 
+##   0.8962963
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{specificity}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Specificity 
+##   0.8032787
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{accuracy}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  Accuracy 
+## 0.8673469
+\end{verbatim}
+
+\section{Step 10: ROC curve and AUC}\label{step-10-roc-curve-and-auc}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(pROC)}
+\CommentTok{\# Predict probabilities}
+\NormalTok{rf\_pred\_prob }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(rf\_model\_tuned, }\AttributeTok{newdata =}\NormalTok{ test.data, }\AttributeTok{type =} \StringTok{"prob"}\NormalTok{)}
+
+\CommentTok{\# Extract probability of POSITIVE class}
+\NormalTok{rf\_pred\_prob\_pos }\OtherTok{\textless{}{-}}\NormalTok{ rf\_pred\_prob[, }\StringTok{"POSITIVE"}\NormalTok{]}
+
+\CommentTok{\# Make Sure Target is Factor}
+\NormalTok{test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend }\OtherTok{\textless{}{-}} \FunctionTok{factor}\NormalTok{(}
+\NormalTok{  test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{)}
+
+\CommentTok{\# Compute ROC Curve}
+\NormalTok{roc\_rf }\OtherTok{\textless{}{-}} \FunctionTok{roc}\NormalTok{(}
+  \AttributeTok{response =}\NormalTok{ test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{predictor =}\NormalTok{ rf\_pred\_prob\_pos,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{),}
+  \AttributeTok{direction =} \StringTok{"\textless{}"}
+\NormalTok{)}
+
+\CommentTok{\# AUC}
+\NormalTok{auc\_rf }\OtherTok{\textless{}{-}} \FunctionTok{auc}\NormalTok{(roc\_rf)}
+\NormalTok{auc\_rf}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Area under the curve: 0.9315
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Plot ROC curve}
+\FunctionTok{plot}\NormalTok{(}
+\NormalTok{  roc\_rf,}
+  \AttributeTok{col =} \StringTok{"blue"}\NormalTok{,}
+  \AttributeTok{lwd =} \DecValTok{2}\NormalTok{,}
+  \AttributeTok{main =} \StringTok{"ROC Curve {-} Random Forest"}
+\NormalTok{)}
+
+\FunctionTok{abline}\NormalTok{(}\AttributeTok{a =} \DecValTok{0}\NormalTok{, }\AttributeTok{b =} \DecValTok{1}\NormalTok{, }\AttributeTok{lty =} \DecValTok{2}\NormalTok{, }\AttributeTok{col =} \StringTok{"gray"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{data_cleaning_modeling_quynh_files/figure-latex/unnamed-chunk-44-1.pdf}}
+Random forest model has AUC of 0.9309.
+
+Due to class imbalance, decision tree predicts majority class better,
+which is shown by better accuracy but worse AUC compared to random
+forest. Accuracy is defined by a threshold and AUC is defined without
+threshold, so AUC is the better metric when we haven't tuned the
+threshold, because of class imbalance.
+
+\end{document}

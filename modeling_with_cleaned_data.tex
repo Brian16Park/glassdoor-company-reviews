@@ -1,0 +1,1342 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={modeling\_with\_cleaned\_data},
+  pdfauthor={Quynh Tran},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{modeling\_with\_cleaned\_data}
+\author{Quynh Tran}
+\date{2026-04-10}
+
+\begin{document}
+\maketitle
+
+\section{Import packages}\label{import-packages}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(MASS)}
+\FunctionTok{library}\NormalTok{(tidyverse)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## -- Attaching core tidyverse packages ------------------------ tidyverse 2.0.0 --
+## v dplyr     1.2.1     v readr     2.2.0
+## v forcats   1.0.1     v stringr   1.6.0
+## v ggplot2   4.0.2     v tibble    3.3.1
+## v lubridate 1.9.5     v tidyr     1.3.2
+## v purrr     1.2.1     
+## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()
+## x dplyr::select() masks MASS::select()
+## i Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("lattice")}
+\FunctionTok{library}\NormalTok{(lattice)}
+\FunctionTok{library}\NormalTok{(caret)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'caret'
+## 
+## The following object is masked from 'package:purrr':
+## 
+##     lift
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("Matrix")}
+\FunctionTok{library}\NormalTok{(Matrix)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'Matrix'
+## 
+## The following objects are masked from 'package:tidyr':
+## 
+##     expand, pack, unpack
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(glmnet)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loaded glmnet 4.1-10
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(mlbench)}
+\FunctionTok{library}\NormalTok{(caret)}
+\FunctionTok{library}\NormalTok{(here)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## here() starts at /Users/quynhtran/glassdoor-company-reviews
+\end{verbatim}
+
+\section{Import dataset}\label{import-dataset}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{df }\OtherTok{\textless{}{-}} \FunctionTok{read.csv}\NormalTok{(}\FunctionTok{here}\NormalTok{(}\StringTok{"data/processed/reviews\_with\_sent\_scores.csv"}\NormalTok{))}
+\CommentTok{\#view(df)}
+\FunctionTok{summary}\NormalTok{(df)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    review_id        rating_date        count_helpful    count_unhelpful
+##  Min.   : 1710168   Length:1000        Min.   : 0.000   Min.   :0.000  
+##  1st Qu.:41717569   Class :character   1st Qu.: 1.000   1st Qu.:0.000  
+##  Median :53464690   Mode  :character   Median : 1.000   Median :0.000  
+##  Mean   :50892946                      Mean   : 2.701   Mean   :0.034  
+##  3rd Qu.:64569311                      3rd Qu.: 3.000   3rd Qu.:0.000  
+##  Max.   :85655363                      Max.   :45.000   Max.   :5.000  
+##                                                                        
+##  employee_job_end_year employee_length  employee_status    covid_related_review
+##  Min.   :2009          Min.   : 1.000   Length:1000        Min.   :0.000       
+##  1st Qu.:2019          1st Qu.: 1.000   Class :character   1st Qu.:0.000       
+##  Median :2020          Median : 2.000   Mode  :character   Median :0.000       
+##  Mean   :2020          Mean   : 3.849                      Mean   :0.295       
+##  3rd Qu.:2021          3rd Qu.: 4.000                      3rd Qu.:1.000       
+##  Max.   :2024          Max.   :20.000                      Max.   :1.000       
+##  NA's   :49                                                                    
+##  flags_business_outlook flags_ceo_approval flags_recommend_frend
+##  Length:1000            Length:1000        Length:1000          
+##  Class :character       Class :character   Class :character     
+##  Mode  :character       Mode  :character   Mode  :character     
+##                                                                 
+##                                                                 
+##                                                                 
+##                                                                 
+##  rating_culture_values rating_diversity_inclusion rating_overall 
+##  Min.   :1.000         Min.   :1.000              Min.   :1.000  
+##  1st Qu.:1.000         1st Qu.:1.000              1st Qu.:1.000  
+##  Median :2.000         Median :3.000              Median :2.000  
+##  Mean   :2.452         Mean   :2.949              Mean   :2.447  
+##  3rd Qu.:4.000         3rd Qu.:4.000              3rd Qu.:4.000  
+##  Max.   :5.000         Max.   :5.000              Max.   :5.000  
+##                                                                  
+##  rating_work_life   summary          company_name       employee_location 
+##  Min.   :1.000    Length:1000        Length:1000        Length:1000       
+##  1st Qu.:1.000    Class :character   Class :character   Class :character  
+##  Median :2.000    Mode  :character   Mode  :character   Mode  :character  
+##  Mean   :2.608                                                            
+##  3rd Qu.:4.000                                                            
+##  Max.   :5.000                                                            
+##                                                                           
+##  employee_job_title advice_to_management review_pros        review_cons       
+##  Length:1000        Length:1000          Length:1000        Length:1000       
+##  Class :character   Class :character     Class :character   Class :character  
+##  Mode  :character   Mode  :character     Mode  :character   Mode  :character  
+##                                                                               
+##                                                                               
+##                                                                               
+##                                                                               
+##  rating_compensation_benefits rating_senior_leadership
+##  Min.   :1.000                Min.   :1.000           
+##  1st Qu.:1.000                1st Qu.:1.000           
+##  Median :3.000                Median :1.000           
+##  Mean   :2.809                Mean   :2.122           
+##  3rd Qu.:4.000                3rd Qu.:3.000           
+##  Max.   :5.000                Max.   :5.000           
+##                                                       
+##  rating_career_opportunities    sector           rating_year  
+##  Min.   :1.000               Length:1000        Min.   :2012  
+##  1st Qu.:3.000               Class :character   1st Qu.:2021  
+##  Median :3.000               Mode  :character   Median :2021  
+##  Mean   :3.112                                  Mean   :2021  
+##  3rd Qu.:4.000                                  3rd Qu.:2022  
+##  Max.   :5.000                                  Max.   :2024  
+##                                                               
+##  helpfulness_score career_missing  employee_job_quit employee_job_start_year
+##  Min.   :-3.000    Mode :logical   Mode :logical     Min.   :1992           
+##  1st Qu.: 1.000    FALSE:406       FALSE:65          1st Qu.:2014           
+##  Median : 1.000    TRUE :594       TRUE :935         Median :2017           
+##  Mean   : 2.667                                      Mean   :2016           
+##  3rd Qu.: 3.000                                      3rd Qu.:2019           
+##  Max.   :45.000                                      Max.   :2023           
+##                                                                             
+##  has_review_text distilbert_summary_label distilbert_summary_score
+##  Mode:logical    Length:1000              Min.   :0.5009          
+##  TRUE:1000       Class :character         1st Qu.:0.9896          
+##                  Mode  :character         Median :0.9992          
+##                                           Mean   :0.9653          
+##                                           3rd Qu.:0.9998          
+##                                           Max.   :0.9999          
+##                                                                   
+##  distilbert_pros_label distilbert_pros_score distilbert_cons_label
+##  Length:1000           Min.   :0.5327        Length:1000          
+##  Class :character      1st Qu.:0.9951        Class :character     
+##  Mode  :character      Median :0.9997        Mode  :character     
+##                        Mean   :0.9692                             
+##                        3rd Qu.:0.9998                             
+##                        Max.   :0.9999                             
+##                                                                   
+##  distilbert_cons_score distilbert_advice_label distilbert_advice_score
+##  Min.   :0.5092        Length:1000             Min.   :0.5623         
+##  1st Qu.:0.9971        Class :character        1st Qu.:0.7481         
+##  Median :0.9993        Mode  :character        Median :0.7481         
+##  Mean   :0.9805                                Mean   :0.8198         
+##  3rd Qu.:0.9997                                3rd Qu.:0.9800         
+##  Max.   :0.9999                                Max.   :0.9999         
+##                                                                       
+##  distilbert_summary_signed distilbert_pros_signed distilbert_cons_signed
+##  Min.   :-0.99982          Min.   :-0.9998        Min.   :-0.9998       
+##  1st Qu.:-0.99935          1st Qu.: 0.9877        1st Qu.:-0.9997       
+##  Median :-0.90638          Median : 0.9997        Median :-0.9993       
+##  Mean   :-0.07314          Mean   : 0.7738        Mean   :-0.8172       
+##  3rd Qu.: 0.99889          3rd Qu.: 0.9998        3rd Qu.:-0.9964       
+##  Max.   : 0.99989          Max.   : 0.9999        Max.   : 0.9999       
+##                                                                         
+##  distilbert_advice_signed roberta_summary_label roberta_summary_score
+##  Min.   :-0.9998          Length:1000           Min.   :0.3416       
+##  1st Qu.: 0.7481          Class :character      1st Qu.:0.6335       
+##  Median : 0.7481          Mode  :character      Median :0.8052       
+##  Mean   : 0.5373                                Mean   :0.7607       
+##  3rd Qu.: 0.7481                                3rd Qu.:0.9109       
+##  Max.   : 0.9999                                Max.   :0.9866       
+##                                                                      
+##  roberta_pros_label roberta_pros_score roberta_cons_label roberta_cons_score
+##  Length:1000        Min.   :0.3845     Length:1000        Min.   :0.3759    
+##  Class :character   1st Qu.:0.7238     Class :character   1st Qu.:0.6913    
+##  Mode  :character   Median :0.9131     Mode  :character   Median :0.8335    
+##                     Mean   :0.8285                        Mean   :0.7813    
+##                     3rd Qu.:0.9646                        3rd Qu.:0.8968    
+##                     Max.   :0.9872                        Max.   :0.9663    
+##                                                                             
+##  roberta_advice_label roberta_advice_score roberta_summary_signed
+##  Length:1000          Min.   :0.4013       Min.   :-0.95878      
+##  Class :character     1st Qu.:0.4013       1st Qu.:-0.77176      
+##  Mode  :character     Median :0.4013       Median : 0.00000      
+##                       Mean   :0.5004       Mean   :-0.09787      
+##                       3rd Qu.:0.6018       3rd Qu.: 0.40130      
+##                       Max.   :0.9814       Max.   : 0.98661      
+##                                                                  
+##  roberta_pros_signed roberta_cons_signed roberta_advice_signed
+##  Min.   :-0.9555     Min.   :-0.9521     Min.   :-0.9533      
+##  1st Qu.: 0.5062     1st Qu.:-0.8955     1st Qu.: 0.0000      
+##  Median : 0.9079     Median :-0.8261     Median : 0.4013      
+##  Mean   : 0.6682     Mean   :-0.6484     Mean   : 0.2658      
+##  3rd Qu.: 0.9646     3rd Qu.:-0.6365     3rd Qu.: 0.4013      
+##  Max.   : 0.9872     Max.   : 0.9663     Max.   : 0.9814      
+##                                                               
+##  vader_summary_neg vader_summary_neu vader_summary_pos vader_summary_compound
+##  Min.   :0.0000    Min.   :0.0000    Min.   :0.0000    Min.   :-0.86190      
+##  1st Qu.:0.0000    1st Qu.:0.3450    1st Qu.:0.0000    1st Qu.:-0.18363      
+##  Median :0.0000    Median :0.5800    Median :0.0000    Median : 0.00000      
+##  Mean   :0.1584    Mean   :0.6014    Mean   :0.1972    Mean   : 0.03709      
+##  3rd Qu.:0.2983    3rd Qu.:1.0000    3rd Qu.:0.3820    3rd Qu.: 0.40200      
+##  Max.   :1.0000    Max.   :1.0000    Max.   :1.0000    Max.   : 0.92310      
+##                                                                              
+##  vader_pros_neg    vader_pros_neu   vader_pros_pos   vader_pros_compound
+##  Min.   :0.00000   Min.   :0.0000   Min.   :0.0000   Min.   :-0.9667    
+##  1st Qu.:0.00000   1st Qu.:0.4193   1st Qu.:0.2060   1st Qu.: 0.3612    
+##  Median :0.00000   Median :0.5745   Median :0.3685   Median : 0.6369    
+##  Mean   :0.03049   Mean   :0.5516   Mean   :0.3569   Mean   : 0.5342    
+##  3rd Qu.:0.00000   3rd Qu.:0.7070   3rd Qu.:0.5150   3rd Qu.: 0.8269    
+##  Max.   :0.54500   Max.   :1.0000   Max.   :1.0000   Max.   : 0.9959    
+##                                                                         
+##  vader_cons_neg   vader_cons_neu   vader_cons_pos    vader_cons_compound
+##  Min.   :0.0000   Min.   :0.0000   Min.   :0.00000   Min.   :-0.992300  
+##  1st Qu.:0.0530   1st Qu.:0.6228   1st Qu.:0.00000   1st Qu.:-0.623475  
+##  Median :0.1455   Median :0.7410   Median :0.06300   Median :-0.249200  
+##  Mean   :0.1717   Mean   :0.7084   Mean   :0.08382   Mean   :-0.215810  
+##  3rd Qu.:0.2477   3rd Qu.:0.8360   3rd Qu.:0.13300   3rd Qu.: 0.004925  
+##  Max.   :1.0000   Max.   :1.0000   Max.   :0.63100   Max.   : 0.983500  
+##                                                                         
+##  vader_advice_neg  vader_advice_neu vader_advice_pos  vader_advice_compound
+##  Min.   :0.00000   Min.   :0.0000   Min.   :0.00000   Min.   :-0.93220     
+##  1st Qu.:0.00000   1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.: 0.00000     
+##  Median :0.00000   Median :0.0000   Median :0.00000   Median : 0.00000     
+##  Mean   :0.02609   Mean   :0.2380   Mean   :0.07091   Mean   : 0.06872     
+##  3rd Qu.:0.00000   3rd Qu.:0.5883   3rd Qu.:0.00000   3rd Qu.: 0.00000     
+##  Max.   :1.00000   Max.   :1.0000   Max.   :1.00000   Max.   : 0.95950     
+##                                                                            
+##    summary_wc        pros_wc          cons_wc         advice_wc      
+##  Min.   : 0.000   Min.   :  0.00   Min.   :  0.00   Min.   :  0.000  
+##  1st Qu.: 2.000   1st Qu.:  6.00   1st Qu.:  9.00   1st Qu.:  0.000  
+##  Median : 4.000   Median :  9.00   Median : 21.00   Median :  0.000  
+##  Mean   : 4.644   Mean   : 13.78   Mean   : 36.88   Mean   :  5.573  
+##  3rd Qu.: 6.000   3rd Qu.: 16.00   3rd Qu.: 46.00   3rd Qu.:  5.250  
+##  Max.   :23.000   Max.   :288.00   Max.   :696.00   Max.   :109.000  
+## 
+\end{verbatim}
+
+\section{Logistic Regression model:}\label{logistic-regression-model}
+
+\section{Create a subset for Logistic regression and Convert categorical
+variables:}\label{create-a-subset-for-logistic-regression-and-convert-categorical-variables}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{log\_data }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{select}\NormalTok{( }
+\NormalTok{    flags\_recommend\_frend, }
+\NormalTok{    rating\_culture\_values, }
+\NormalTok{    rating\_work\_life, }
+\NormalTok{    rating\_compensation\_benefits, }
+\NormalTok{    rating\_senior\_leadership, }
+\NormalTok{    rating\_career\_opportunities, }
+\NormalTok{    rating\_diversity\_inclusion, }
+\NormalTok{    flags\_business\_outlook, }
+\NormalTok{    flags\_ceo\_approval,}
+\NormalTok{    employee\_length, }
+\NormalTok{    employee\_job\_quit, }
+\NormalTok{    sector, }
+\NormalTok{    covid\_related\_review, }
+\NormalTok{    career\_missing}
+\NormalTok{  )}
+
+\CommentTok{\# Recode recommendation / outlook / CEO approval into numeric variables}
+\NormalTok{log\_data }\OtherTok{\textless{}{-}}\NormalTok{ log\_data }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{employee\_job\_quit =} \FunctionTok{as.integer}\NormalTok{(employee\_job\_quit),}
+    \AttributeTok{career\_missing =} \FunctionTok{as.integer}\NormalTok{(career\_missing),}
+    \AttributeTok{flags\_recommend\_frend =} \FunctionTok{as.factor}\NormalTok{(flags\_recommend\_frend),}
+    \AttributeTok{sector =} \FunctionTok{as.integer}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(sector)),}
+    \AttributeTok{flags\_business\_outlook =} \FunctionTok{as.integer}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(flags\_business\_outlook)),}
+    \AttributeTok{flags\_ceo\_approval =} \FunctionTok{as.integer}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(flags\_ceo\_approval))}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Split the data into
+training-testing}\label{split-the-data-into-training-testing}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(caret)}
+
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+
+\NormalTok{train\_index }\OtherTok{\textless{}{-}} \FunctionTok{createDataPartition}\NormalTok{(}
+\NormalTok{  log\_data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{p =} \FloatTok{0.8}\NormalTok{,}
+  \AttributeTok{list =} \ConstantTok{FALSE}
+\NormalTok{)}
+
+\NormalTok{train.data }\OtherTok{\textless{}{-}}\NormalTok{ log\_data[train\_index, ]}
+\NormalTok{test.data }\OtherTok{\textless{}{-}}\NormalTok{ log\_data[}\SpecialCharTok{{-}}\NormalTok{train\_index, ]}
+
+\CommentTok{\# Check class imbalance after splitting}
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(train.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6916355 0.3083645
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6934673 0.3065327
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Fit the model}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{model\_logit }\OtherTok{\textless{}{-}} \FunctionTok{glm}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{.,}
+  \AttributeTok{data =}\NormalTok{ train.data,}
+  \AttributeTok{family =}\NormalTok{ binomial}
+\NormalTok{)}
+
+\FunctionTok{summary}\NormalTok{(model\_logit)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Call:
+## glm(formula = flags_recommend_frend ~ ., family = binomial, data = train.data)
+## 
+## Coefficients:
+##                              Estimate Std. Error z value Pr(>|z|)    
+## (Intercept)                  -7.84008    1.17543  -6.670 2.56e-11 ***
+## rating_culture_values         0.62444    0.15347   4.069 4.72e-05 ***
+## rating_work_life              0.28724    0.12595   2.281 0.022574 *  
+## rating_compensation_benefits  0.07409    0.13581   0.546 0.585356    
+## rating_senior_leadership      0.49393    0.15378   3.212 0.001318 ** 
+## rating_career_opportunities   0.58309    0.19915   2.928 0.003413 ** 
+## rating_diversity_inclusion    0.01223    0.14054   0.087 0.930659    
+## flags_business_outlook        1.44406    0.21039   6.864 6.71e-12 ***
+## flags_ceo_approval           -0.11902    0.16659  -0.714 0.474939    
+## employee_length               0.02116    0.03227   0.656 0.511957    
+## employee_job_quit            -0.78753    0.57994  -1.358 0.174475    
+## sector                       -0.04566    0.02945  -1.550 0.121111    
+## covid_related_review         -0.07563    0.34217  -0.221 0.825074    
+## career_missing               -0.98802    0.29109  -3.394 0.000688 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 989.69  on 800  degrees of freedom
+## Residual deviance: 340.61  on 787  degrees of freedom
+## AIC: 368.61
+## 
+## Number of Fisher Scoring iterations: 6
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Predict on test data}
+\NormalTok{log\_pred\_prob }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(model\_logit, test.data, }\AttributeTok{type =} \StringTok{"response"}\NormalTok{)}
+\NormalTok{log\_pred\_prob}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##           1           2           5           6          12          24 
+## 0.004921999 0.985562731 0.387866472 0.969403958 0.002370083 0.005076350 
+##          26          29          37          40          49          54 
+## 0.991032676 0.002607727 0.953533571 0.007447713 0.022963935 0.165716827 
+##          64          65          68          79          80          82 
+## 0.009932892 0.003515599 0.012215840 0.012898345 0.969459829 0.003238515 
+##          85          87          89          91          99         100 
+## 0.018601901 0.104906443 0.930466120 0.206057071 0.180979204 0.182908111 
+##         101         108         109         111         118         120 
+## 0.002576319 0.933021572 0.081095266 0.331820692 0.717430826 0.020056764 
+##         123         131         136         146         152         153 
+## 0.234236983 0.004049815 0.482723881 0.808149570 0.006869800 0.992990730 
+##         154         157         184         188         200         217 
+## 0.021009216 0.013387423 0.129050849 0.953858984 0.218109901 0.011288520 
+##         219         220         222         224         229         245 
+## 0.002651481 0.002818759 0.003893597 0.014552594 0.002917529 0.122373027 
+##         252         253         254         263         270         293 
+## 0.983414753 0.005501087 0.997747878 0.426894920 0.027723431 0.004353275 
+##         297         311         320         323         331         332 
+## 0.956962420 0.092298034 0.011043856 0.937535535 0.452261226 0.003335890 
+##         336         352         354         360         366         376 
+## 0.046515385 0.796288454 0.229128932 0.008200290 0.005854349 0.035540476 
+##         377         382         383         387         390         396 
+## 0.125691558 0.683950454 0.004597895 0.004049815 0.006477549 0.002525018 
+##         400         401         403         426         433         443 
+## 0.003614498 0.146770629 0.011363499 0.496539443 0.003634237 0.044788398 
+##         449         450         451         456         458         459 
+## 0.013273810 0.144384805 0.002370083 0.958204259 0.447947335 0.115851206 
+##         468         469         474         477         478         481 
+## 0.035782872 0.675506812 0.158839893 0.003357398 0.995243920 0.283656230 
+##         486         487         488         491         499         500 
+## 0.004445956 0.011863982 0.158969134 0.006951581 0.960801331 0.216978042 
+##         505         509         511         512         520         525 
+## 0.002669410 0.080135760 0.621883471 0.032411549 0.642059102 0.950544385 
+##         531         536         540         545         550         554 
+## 0.002403962 0.003755939 0.317307034 0.114743086 0.132353071 0.002113838 
+##         556         578         582         594         599         604 
+## 0.776505207 0.065615568 0.865133445 0.006959273 0.002026426 0.957149214 
+##         606         610         612         618         622         624 
+## 0.965560533 0.006126137 0.073528197 0.929283625 0.029876373 0.872907466 
+##         629         633         634         637         640         641 
+## 0.002058402 0.318287882 0.028982203 0.244973283 0.008110214 0.014387651 
+##         646         647         659         670         679         686 
+## 0.070390065 0.069445933 0.070026972 0.909100046 0.003910312 0.056111869 
+##         697         698         708         711         716         717 
+## 0.005516401 0.006323966 0.075177736 0.014680791 0.913836250 0.006458331 
+##         721         727         729         731         738         742 
+## 0.243661442 0.004883865 0.780335185 0.910991056 0.993072676 0.008392621 
+##         745         749         750         752         761         771 
+## 0.005806211 0.186971586 0.028026712 0.002420644 0.616700054 0.474120134 
+##         772         776         784         785         786         790 
+## 0.799779790 0.017970174 0.003488126 0.025520926 0.034183414 0.004844122 
+##         800         802         810         812         814         815 
+## 0.082441652 0.980478158 0.009076135 0.126166702 0.994215408 0.006915561 
+##         816         818         828         832         837         841 
+## 0.991057102 0.797698762 0.821628363 0.225764251 0.744993732 0.222175334 
+##         860         881         885         893         896         900 
+## 0.003689150 0.063156746 0.003782087 0.280858124 0.958142826 0.004993045 
+##         906         909         914         915         917         920 
+## 0.036859233 0.184489397 0.081879330 0.286451726 0.025284716 0.470922650 
+##         925         928         930         933         936         937 
+## 0.893247901 0.718376758 0.006465940 0.906379342 0.003724331 0.004282596 
+##         938         942         946         949         950         955 
+## 0.003755939 0.949264883 0.002976080 0.004603418 0.946371958 0.035738521 
+##         956         968         969         970         980         986 
+## 0.971667102 0.141324396 0.048604746 0.120676425 0.020251174 0.004644332 
+##         988 
+## 0.016177640
+\end{verbatim}
+
+\section{Evaluate different classification thresholds to select the best
+one using F1
+scores}\label{evaluate-different-classification-thresholds-to-select-the-best-one-using-f1-scores}
+
+\section{F1 = 2 * (precision * recall) / (precision +
+recall)}\label{f1-2-precision-recall-precision-recall}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 5.1: Create a Sequence of Thresholds}
+\NormalTok{thresholds }\OtherTok{\textless{}{-}} \FunctionTok{seq}\NormalTok{(}\FloatTok{0.1}\NormalTok{, }\FloatTok{1.0}\NormalTok{, }\AttributeTok{by =} \FloatTok{0.1}\NormalTok{)}
+
+\CommentTok{\# Step 5.2: Define a function to calculate F1 score}
+\NormalTok{f1\_score }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(actual, predicted) \{}
+
+\NormalTok{  tp }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(actual }\SpecialCharTok{==} \StringTok{"POSITIVE"} \SpecialCharTok{\&}\NormalTok{ predicted }\SpecialCharTok{==} \StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{  fp }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(actual }\SpecialCharTok{==} \StringTok{"NEGATIVE"} \SpecialCharTok{\&}\NormalTok{ predicted }\SpecialCharTok{==} \StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{  fn }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(actual }\SpecialCharTok{==} \StringTok{"POSITIVE"} \SpecialCharTok{\&}\NormalTok{ predicted }\SpecialCharTok{==} \StringTok{"NEGATIVE"}\NormalTok{)}
+
+\NormalTok{  precision }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{((tp }\SpecialCharTok{+}\NormalTok{ fp) }\SpecialCharTok{==} \DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, tp }\SpecialCharTok{/}\NormalTok{ (tp }\SpecialCharTok{+}\NormalTok{ fp))}
+\NormalTok{  recall }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{((tp }\SpecialCharTok{+}\NormalTok{ fn) }\SpecialCharTok{==} \DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, tp }\SpecialCharTok{/}\NormalTok{ (tp }\SpecialCharTok{+}\NormalTok{ fn))}
+
+  \ControlFlowTok{if}\NormalTok{ (precision }\SpecialCharTok{+}\NormalTok{ recall }\SpecialCharTok{==} \DecValTok{0}\NormalTok{) }\FunctionTok{return}\NormalTok{(}\DecValTok{0}\NormalTok{)}
+
+\NormalTok{  f1 }\OtherTok{\textless{}{-}} \DecValTok{2} \SpecialCharTok{*}\NormalTok{ precision }\SpecialCharTok{*}\NormalTok{ recall }\SpecialCharTok{/}\NormalTok{ (precision }\SpecialCharTok{+}\NormalTok{ recall)}
+
+  \FunctionTok{return}\NormalTok{(f1)}
+\NormalTok{\}}
+
+\CommentTok{\# Step 5.3: Loop Through Thresholds}
+\NormalTok{f1\_results }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{threshold =}\NormalTok{ thresholds, }\AttributeTok{F1 =} \ConstantTok{NA}\NormalTok{)}
+
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \FunctionTok{seq\_along}\NormalTok{(thresholds)) \{}
+  
+\NormalTok{  t }\OtherTok{\textless{}{-}}\NormalTok{ thresholds[i]}
+  
+\NormalTok{  pred\_class }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(log\_pred\_prob }\SpecialCharTok{\textgreater{}}\NormalTok{ t, }\StringTok{"POSITIVE"}\NormalTok{, }\StringTok{"NEGATIVE"}\NormalTok{)}
+  
+\NormalTok{  f1\_results}\SpecialCharTok{$}\NormalTok{F1[i] }\OtherTok{\textless{}{-}} \FunctionTok{f1\_score}\NormalTok{(test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend, pred\_class)}
+\NormalTok{\}}
+
+\CommentTok{\# Step 5.4: Print F1 scores}
+\FunctionTok{print}\NormalTok{(f1\_results)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    threshold        F1
+## 1        0.1 0.7189542
+## 2        0.2 0.7611940
+## 3        0.3 0.8032787
+## 4        0.4 0.8135593
+## 5        0.5 0.7747748
+## 6        0.6 0.7747748
+## 7        0.7 0.7358491
+## 8        0.8 0.7142857
+## 9        0.9 0.6666667
+## 10       1.0 0.0000000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Step 5.5: Choose the threshold with the best F1 score}
+\NormalTok{best\_threshold }\OtherTok{\textless{}{-}}\NormalTok{ f1\_results}\SpecialCharTok{$}\NormalTok{threshold[}\FunctionTok{which.max}\NormalTok{(f1\_results}\SpecialCharTok{$}\NormalTok{F1)]}
+\NormalTok{best\_f1 }\OtherTok{\textless{}{-}} \FunctionTok{max}\NormalTok{(f1\_results}\SpecialCharTok{$}\NormalTok{F1)}
+
+\NormalTok{best\_threshold}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0.4
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{best\_f1}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0.8135593
+\end{verbatim}
+
+\section{Convert Probabilities to Class Predictions using threshold of
+0.4}\label{convert-probabilities-to-class-predictions-using-threshold-of-0.4}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{log\_pred\_class }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(log\_pred\_prob }\SpecialCharTok{\textgreater{}} \FloatTok{0.4}\NormalTok{,}\StringTok{"POSITIVE"}\NormalTok{, }\StringTok{"NEGATIVE"}\NormalTok{)}
+
+\CommentTok{\# Convert to factor}
+\NormalTok{log\_pred\_class }\OtherTok{\textless{}{-}} \FunctionTok{as.factor}\NormalTok{(log\_pred\_class)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Evaluate model performance}\label{evaluate-model-performance}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{logistic\_cm }\OtherTok{\textless{}{-}} \FunctionTok{confusionMatrix}\NormalTok{(log\_pred\_class, test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\NormalTok{logistic\_cm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction NEGATIVE POSITIVE
+##   NEGATIVE      129       13
+##   POSITIVE        9       48
+##                                           
+##                Accuracy : 0.8894          
+##                  95% CI : (0.8374, 0.9294)
+##     No Information Rate : 0.6935          
+##     P-Value [Acc > NIR] : 5.059e-11       
+##                                           
+##                   Kappa : 0.7351          
+##                                           
+##  Mcnemar's Test P-Value : 0.5224          
+##                                           
+##             Sensitivity : 0.9348          
+##             Specificity : 0.7869          
+##          Pos Pred Value : 0.9085          
+##          Neg Pred Value : 0.8421          
+##              Prevalence : 0.6935          
+##          Detection Rate : 0.6482          
+##    Detection Prevalence : 0.7136          
+##       Balanced Accuracy : 0.8608          
+##                                           
+##        'Positive' Class : NEGATIVE        
+## 
+\end{verbatim}
+
+\section{ROC Curve and AUC}\label{roc-curve-and-auc}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(pROC)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Type 'citation("pROC")' for a citation.
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'pROC'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:stats':
+## 
+##     cov, smooth, var
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{log\_roc\_curve }\OtherTok{\textless{}{-}} \FunctionTok{roc}\NormalTok{(test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend, log\_pred\_prob)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Setting levels: control = NEGATIVE, case = POSITIVE
+\end{verbatim}
+
+\begin{verbatim}
+## Setting direction: controls < cases
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(log\_roc\_curve)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-10-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{auc}\NormalTok{(log\_roc\_curve)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Area under the curve: 0.9304
+\end{verbatim}
+
+\section{Decision Tree}\label{decision-tree}
+
+\section{Import packages}\label{import-packages-1}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# {-}{-}{-}{-} 0. Install / load packages {-}{-}{-}{-}}
+\NormalTok{pkg\_needed }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"caret"}\NormalTok{, }\StringTok{"rpart"}\NormalTok{, }\StringTok{"rattle"}\NormalTok{)}
+\ControlFlowTok{for}\NormalTok{ (p }\ControlFlowTok{in}\NormalTok{ pkg\_needed) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\SpecialCharTok{!}\FunctionTok{requireNamespace}\NormalTok{(p, }\AttributeTok{quietly =} \ConstantTok{TRUE}\NormalTok{)) \{}
+    \FunctionTok{install.packages}\NormalTok{(p)}
+\NormalTok{  \}}
+\NormalTok{\}}
+
+\CommentTok{\#install.packages("bitops")}
+\CommentTok{\#install.packages("ggplot2")}
+\CommentTok{\#install.packages("lattice")}
+\CommentTok{\#install.packages("Matrix")}
+\CommentTok{\#install.packages("rpart.plot")}
+\FunctionTok{library}\NormalTok{(caret)}
+\FunctionTok{library}\NormalTok{(rpart)}
+\FunctionTok{library}\NormalTok{(rattle)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Loading required package: bitops
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'bitops'
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:Matrix':
+## 
+##     %&%
+\end{verbatim}
+
+\begin{verbatim}
+## Rattle: A free graphical interface for data science with R.
+## Version 5.6.2 Copyright (c) 2006-2023 Togaware Pty Ltd.
+## Type 'rattle()' to shake, rattle, and roll your data.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(rpart.plot)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Create a subset for decision
+tree}\label{create-a-subset-for-decision-tree}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{tree\_data }\OtherTok{\textless{}{-}}\NormalTok{ df }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{select}\NormalTok{( }
+\NormalTok{    flags\_recommend\_frend, }
+\NormalTok{    rating\_overall,}
+\NormalTok{    rating\_culture\_values, }
+\NormalTok{    rating\_work\_life, }
+\NormalTok{    rating\_compensation\_benefits, }
+\NormalTok{    rating\_senior\_leadership, }
+\NormalTok{    rating\_career\_opportunities, }
+\NormalTok{    rating\_diversity\_inclusion, }
+\NormalTok{    flags\_business\_outlook, }
+\NormalTok{    flags\_ceo\_approval,}
+\NormalTok{    employee\_length, }
+\NormalTok{    employee\_job\_quit, }
+\NormalTok{    sector, }
+\NormalTok{    covid\_related\_review, }
+\NormalTok{    career\_missing}
+\NormalTok{  )}
+
+\CommentTok{\# Recode recommendation / outlook / CEO approval into numeric variables}
+\NormalTok{tree\_data }\OtherTok{\textless{}{-}}\NormalTok{ tree\_data }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{  dplyr}\SpecialCharTok{::}\FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{employee\_job\_quit =} \FunctionTok{as.integer}\NormalTok{(employee\_job\_quit),}
+    \AttributeTok{career\_missing =} \FunctionTok{as.integer}\NormalTok{(career\_missing),}
+    \AttributeTok{flags\_recommend\_frend =} \FunctionTok{as.factor}\NormalTok{(flags\_recommend\_frend),}
+    \AttributeTok{sector =} \FunctionTok{as.integer}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(sector)),}
+    \AttributeTok{flags\_business\_outlook =} \FunctionTok{as.integer}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(flags\_business\_outlook)),}
+    \AttributeTok{flags\_ceo\_approval =} \FunctionTok{as.integer}\NormalTok{(}\FunctionTok{as.factor}\NormalTok{(flags\_ceo\_approval))}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Split the dataset into training and
+testing}\label{split-the-dataset-into-training-and-testing}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(caret)}
+
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+
+\NormalTok{train\_index }\OtherTok{\textless{}{-}} \FunctionTok{createDataPartition}\NormalTok{(}
+\NormalTok{  tree\_data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{p =} \FloatTok{0.8}\NormalTok{,}
+  \AttributeTok{list =} \ConstantTok{FALSE}
+\NormalTok{)}
+
+\NormalTok{tree.train.data }\OtherTok{\textless{}{-}}\NormalTok{ tree\_data[train\_index, ]}
+\NormalTok{tree.test.data }\OtherTok{\textless{}{-}}\NormalTok{ tree\_data[}\SpecialCharTok{{-}}\NormalTok{train\_index, ]}
+
+\CommentTok{\# Check class imbalance after splitting}
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(tree.train.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6916355 0.3083645
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{prop.table}\NormalTok{(}\FunctionTok{table}\NormalTok{(tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+##  NEGATIVE  POSITIVE 
+## 0.6934673 0.3065327
+\end{verbatim}
+
+\section{Train the Decision Tree}\label{train-the-decision-tree}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Fit the initial tree}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{tree\_model }\OtherTok{\textless{}{-}} \FunctionTok{rpart}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .,}
+  \AttributeTok{data =}\NormalTok{ tree.train.data,}
+  \AttributeTok{method =} \StringTok{"class"}\NormalTok{, }
+  \AttributeTok{control =} \FunctionTok{rpart.control}\NormalTok{(}\AttributeTok{cp =} \DecValTok{0}\NormalTok{, }\AttributeTok{xval =} \DecValTok{10}\NormalTok{, }\AttributeTok{minsplit =} \DecValTok{2}\NormalTok{, }\AttributeTok{minbucket =} \DecValTok{1}\NormalTok{)}
+\NormalTok{)}
+
+\CommentTok{\# Visualize the tree}
+\FunctionTok{rpart.plot}\NormalTok{(tree\_model, }\AttributeTok{main =} \StringTok{"Initial Tree"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: labs do not fit even at cex 0.15, there may be some overplotting
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-14-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Check CP table}
+\FunctionTok{printcp}\NormalTok{(tree\_model)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Classification tree:
+## rpart(formula = flags_recommend_frend ~ ., data = tree.train.data, 
+##     method = "class", control = rpart.control(cp = 0, xval = 10, 
+##         minsplit = 2, minbucket = 1))
+## 
+## Variables actually used in tree construction:
+##  [1] career_missing               employee_length             
+##  [3] flags_business_outlook       flags_ceo_approval          
+##  [5] rating_career_opportunities  rating_compensation_benefits
+##  [7] rating_culture_values        rating_diversity_inclusion  
+##  [9] rating_overall               rating_senior_leadership    
+## [11] rating_work_life             sector                      
+## 
+## Root node error: 247/801 = 0.30836
+## 
+## n= 801 
+## 
+##           CP nsplit rel error  xerror     xstd
+## 1  0.6842105      0 1.0000000 1.00000 0.052916
+## 2  0.0283401      1 0.3157895 0.31579 0.033971
+## 3  0.0202429      3 0.2591093 0.29960 0.033180
+## 4  0.0053981      4 0.2388664 0.25506 0.030845
+## 5  0.0050607      9 0.2105263 0.28745 0.032567
+## 6  0.0040486     15 0.1740891 0.28745 0.032567
+## 7  0.0032389     29 0.1133603 0.34008 0.035106
+## 8  0.0024291     34 0.0971660 0.36032 0.036010
+## 9  0.0020243     47 0.0647773 0.40486 0.037874
+## 10 0.0013495     61 0.0364372 0.40891 0.038036
+## 11 0.0010121     81 0.0080972 0.43725 0.039135
+## 12 0.0000000     89 0.0000000 0.44130 0.039287
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Select the best CP value}
+\NormalTok{best\_cp }\OtherTok{\textless{}{-}}\NormalTok{ tree\_model}\SpecialCharTok{$}\NormalTok{cptable[}
+  \FunctionTok{which.min}\NormalTok{(tree\_model}\SpecialCharTok{$}\NormalTok{cptable[, }\StringTok{"xerror"}\NormalTok{]),}
+  \StringTok{"CP"}
+\NormalTok{]}
+
+\FunctionTok{cat}\NormalTok{(}\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{Best CP value:"}\NormalTok{, best\_cp, }\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Best CP value: 0.005398111
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Prune the tree using best CP value}
+\NormalTok{pruned\_tree }\OtherTok{\textless{}{-}} \FunctionTok{prune}\NormalTok{(tree\_model, }\AttributeTok{cp =}\NormalTok{ best\_cp)}
+
+\CommentTok{\# Visualize the pruned tree}
+\FunctionTok{fancyRpartPlot}\NormalTok{(pruned\_tree, }\AttributeTok{main =} \StringTok{"Optimal Pruned Tree"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-14-2.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Predict on test data}
+\NormalTok{pred\_test }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(pruned\_tree, }\AttributeTok{newdata =}\NormalTok{ tree.test.data, }\AttributeTok{type =} \StringTok{"class"}\NormalTok{)}
+
+\CommentTok{\# Confusion Matrix and Metrics}
+\NormalTok{pruned\_tree\_cm }\OtherTok{\textless{}{-}} \FunctionTok{confusionMatrix}\NormalTok{(pred\_test, tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend)}
+\NormalTok{pruned\_tree\_cm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction NEGATIVE POSITIVE
+##   NEGATIVE      126       13
+##   POSITIVE       12       48
+##                                          
+##                Accuracy : 0.8744         
+##                  95% CI : (0.8202, 0.917)
+##     No Information Rate : 0.6935         
+##     P-Value [Acc > NIR] : 1.833e-09      
+##                                          
+##                   Kappa : 0.7031         
+##                                          
+##  Mcnemar's Test P-Value : 1              
+##                                          
+##             Sensitivity : 0.9130         
+##             Specificity : 0.7869         
+##          Pos Pred Value : 0.9065         
+##          Neg Pred Value : 0.8000         
+##              Prevalence : 0.6935         
+##          Detection Rate : 0.6332         
+##    Detection Prevalence : 0.6985         
+##       Balanced Accuracy : 0.8500         
+##                                          
+##        'Positive' Class : NEGATIVE       
+## 
+\end{verbatim}
+
+\section{ROC curve and AUC}\label{roc-curve-and-auc-1}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# ROC and AUC for pruned tree}
+\CommentTok{\#install.packages("pROC")}
+\FunctionTok{library}\NormalTok{(pROC)}
+
+\CommentTok{\# Make sure outcome levels are ordered correctly}
+\NormalTok{test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend }\OtherTok{\textless{}{-}} \FunctionTok{factor}\NormalTok{(}
+\NormalTok{  tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{)}
+
+\CommentTok{\# Predicted probabilities}
+\NormalTok{pred\_prob }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(pruned\_tree, }\AttributeTok{newdata =}\NormalTok{ tree.test.data, }\AttributeTok{type =} \StringTok{"prob"}\NormalTok{)}
+
+\CommentTok{\# Probability of positive class}
+\NormalTok{pred\_prob\_positive }\OtherTok{\textless{}{-}}\NormalTok{ pred\_prob[, }\StringTok{"POSITIVE"}\NormalTok{]}
+
+\CommentTok{\# ROC curve}
+\NormalTok{roc\_pruned\_tree }\OtherTok{\textless{}{-}} \FunctionTok{roc}\NormalTok{(}
+  \AttributeTok{response =}\NormalTok{ tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{predictor =}\NormalTok{ pred\_prob\_positive,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{),}
+  \AttributeTok{direction =} \StringTok{"\textless{}"}
+\NormalTok{)}
+
+\CommentTok{\# AUC}
+\NormalTok{auc\_pruned\_tree }\OtherTok{\textless{}{-}} \FunctionTok{auc}\NormalTok{(roc\_pruned\_tree)}
+\NormalTok{auc\_pruned\_tree}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Area under the curve: 0.8503
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Plot ROC}
+\FunctionTok{plot}\NormalTok{(}
+\NormalTok{  roc\_pruned\_tree,}
+  \AttributeTok{col =} \StringTok{"blue"}\NormalTok{,}
+  \AttributeTok{lwd =} \DecValTok{2}\NormalTok{,}
+  \AttributeTok{main =} \StringTok{"ROC Curve {-} Pruned Decision Tree"}
+\NormalTok{)}
+
+\CommentTok{\# Add diagonal reference line}
+\FunctionTok{abline}\NormalTok{(}\AttributeTok{a =} \DecValTok{0}\NormalTok{, }\AttributeTok{b =} \DecValTok{1}\NormalTok{, }\AttributeTok{lty =} \DecValTok{2}\NormalTok{, }\AttributeTok{col =} \StringTok{"gray"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-15-1.pdf}}
+\# Random forest:
+
+\section{Import packages}\label{import-packages-2}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#install.packages("randomForest")}
+\CommentTok{\#install.packages("ggplot2")}
+\FunctionTok{library}\NormalTok{(randomForest)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## randomForest 4.7-1.2
+\end{verbatim}
+
+\begin{verbatim}
+## Type rfNews() to see new features/changes/bug fixes.
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'randomForest'
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:rattle':
+## 
+##     importance
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:dplyr':
+## 
+##     combine
+\end{verbatim}
+
+\begin{verbatim}
+## The following object is masked from 'package:ggplot2':
+## 
+##     margin
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(caret)}
+\end{Highlighting}
+\end{Shaded}
+
+\section{Train the random forest}\label{train-the-random-forest}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Train Random Forest with 10{-}fold CV}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+
+\NormalTok{p }\OtherTok{\textless{}{-}} \FunctionTok{ncol}\NormalTok{(tree.train.data) }\SpecialCharTok{{-}} \DecValTok{1}
+
+\NormalTok{rf\_model }\OtherTok{\textless{}{-}} \FunctionTok{train}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .,}
+  \AttributeTok{data =}\NormalTok{ tree.train.data,}
+  \AttributeTok{method =} \StringTok{"rf"}\NormalTok{,}
+  \AttributeTok{trControl =} \FunctionTok{trainControl}\NormalTok{(}\AttributeTok{method =} \StringTok{"cv"}\NormalTok{, }\AttributeTok{number =} \DecValTok{10}\NormalTok{),}
+  \AttributeTok{tuneGrid =} \FunctionTok{expand.grid}\NormalTok{(}\AttributeTok{mtry =} \DecValTok{1}\SpecialCharTok{:}\NormalTok{p),}
+  \AttributeTok{ntree =} \DecValTok{500}\NormalTok{,}
+  \AttributeTok{importance =} \ConstantTok{TRUE}
+\NormalTok{)}
+
+\CommentTok{\# Find the best mtry}
+\NormalTok{bestTune }\OtherTok{\textless{}{-}}\NormalTok{ rf\_model}\SpecialCharTok{$}\NormalTok{bestTune}
+\NormalTok{bestTune}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##    mtry
+## 13   13
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Refit the model with the best mtry}
+\NormalTok{rf\_model\_tuned }\OtherTok{\textless{}{-}} \FunctionTok{train}\NormalTok{(}
+\NormalTok{  flags\_recommend\_frend }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .,}
+  \AttributeTok{data =}\NormalTok{ tree.train.data,}
+  \AttributeTok{method =} \StringTok{"rf"}\NormalTok{,}
+  \AttributeTok{trControl =} \FunctionTok{trainControl}\NormalTok{(}
+    \AttributeTok{method =} \StringTok{"cv"}\NormalTok{,}
+    \AttributeTok{number =} \DecValTok{10}\NormalTok{,}
+    \AttributeTok{classProbs =} \ConstantTok{TRUE}\NormalTok{,}
+    \AttributeTok{summaryFunction =}\NormalTok{ twoClassSummary}
+\NormalTok{  ),}
+  \AttributeTok{tuneGrid =} \FunctionTok{expand.grid}\NormalTok{(}\AttributeTok{mtry =}\NormalTok{ bestTune),  }\CommentTok{\# 👈 use your chosen mtry}
+  \AttributeTok{ntree =} \DecValTok{500}\NormalTok{,}
+  \AttributeTok{metric =} \StringTok{"ROC"}\NormalTok{,}
+  \AttributeTok{importance =} \ConstantTok{TRUE}
+\NormalTok{)}
+
+\CommentTok{\# Variable importance plots}
+\FunctionTok{varImpPlot}\NormalTok{(rf\_model\_tuned}\SpecialCharTok{$}\NormalTok{finalModel, }\AttributeTok{type =} \DecValTok{1}\NormalTok{, }\AttributeTok{main =} \StringTok{"Mean Decrease Accuracy (MSE)"}\NormalTok{)  }\CommentTok{\# Mean Decrease Accuracy (MSE)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-17-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{varImpPlot}\NormalTok{(rf\_model\_tuned}\SpecialCharTok{$}\NormalTok{finalModel, }\AttributeTok{type =} \DecValTok{2}\NormalTok{, }\AttributeTok{main =} \StringTok{"Mean Decrease Node Impurity"}\NormalTok{)  }\CommentTok{\# Mean Decrease Node Impurity}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-17-2.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Predict on test data}
+\NormalTok{pred\_test }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(rf\_model\_tuned, tree.test.data)}
+
+\CommentTok{\# Confusion matrix and metrics}
+\NormalTok{cm }\OtherTok{\textless{}{-}} \FunctionTok{confusionMatrix}\NormalTok{(}
+\NormalTok{  pred\_test,}
+\NormalTok{  tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend}
+\NormalTok{)}
+
+\NormalTok{cm}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction NEGATIVE POSITIVE
+##   NEGATIVE      129       13
+##   POSITIVE        9       48
+##                                           
+##                Accuracy : 0.8894          
+##                  95% CI : (0.8374, 0.9294)
+##     No Information Rate : 0.6935          
+##     P-Value [Acc > NIR] : 5.059e-11       
+##                                           
+##                   Kappa : 0.7351          
+##                                           
+##  Mcnemar's Test P-Value : 0.5224          
+##                                           
+##             Sensitivity : 0.9348          
+##             Specificity : 0.7869          
+##          Pos Pred Value : 0.9085          
+##          Neg Pred Value : 0.8421          
+##              Prevalence : 0.6935          
+##          Detection Rate : 0.6482          
+##    Detection Prevalence : 0.7136          
+##       Balanced Accuracy : 0.8608          
+##                                           
+##        'Positive' Class : NEGATIVE        
+## 
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Metrics}
+\NormalTok{sensitivity }\OtherTok{\textless{}{-}}\NormalTok{ cm}\SpecialCharTok{$}\NormalTok{byClass[}\StringTok{"Sensitivity"}\NormalTok{]}
+\NormalTok{specificity }\OtherTok{\textless{}{-}}\NormalTok{ cm}\SpecialCharTok{$}\NormalTok{byClass[}\StringTok{"Specificity"}\NormalTok{]}
+\NormalTok{accuracy    }\OtherTok{\textless{}{-}}\NormalTok{ cm}\SpecialCharTok{$}\NormalTok{overall[}\StringTok{"Accuracy"}\NormalTok{]}
+
+\NormalTok{sensitivity}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Sensitivity 
+##   0.9347826
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{specificity}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Specificity 
+##   0.7868852
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{accuracy}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  Accuracy 
+## 0.8894472
+\end{verbatim}
+
+\section{ROC curve and AUC}\label{roc-curve-and-auc-2}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(pROC)}
+\CommentTok{\# Predict probabilities}
+\NormalTok{rf\_pred\_prob }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(rf\_model\_tuned, }\AttributeTok{newdata =}\NormalTok{ tree.test.data, }\AttributeTok{type =} \StringTok{"prob"}\NormalTok{)}
+
+\CommentTok{\# Extract probability of POSITIVE class}
+\NormalTok{rf\_pred\_prob\_pos }\OtherTok{\textless{}{-}}\NormalTok{ rf\_pred\_prob[, }\StringTok{"POSITIVE"}\NormalTok{]}
+
+\CommentTok{\# Make Sure Target is Factor}
+\NormalTok{test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend }\OtherTok{\textless{}{-}} \FunctionTok{factor}\NormalTok{(}
+\NormalTok{  tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{)}
+\NormalTok{)}
+
+\CommentTok{\# Compute ROC Curve}
+\NormalTok{roc\_rf }\OtherTok{\textless{}{-}} \FunctionTok{roc}\NormalTok{(}
+  \AttributeTok{response =}\NormalTok{ tree.test.data}\SpecialCharTok{$}\NormalTok{flags\_recommend\_frend,}
+  \AttributeTok{predictor =}\NormalTok{ rf\_pred\_prob\_pos,}
+  \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"NEGATIVE"}\NormalTok{, }\StringTok{"POSITIVE"}\NormalTok{),}
+  \AttributeTok{direction =} \StringTok{"\textless{}"}
+\NormalTok{)}
+
+\CommentTok{\# AUC}
+\NormalTok{auc\_rf }\OtherTok{\textless{}{-}} \FunctionTok{auc}\NormalTok{(roc\_rf)}
+\NormalTok{auc\_rf}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Area under the curve: 0.928
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Plot ROC curve}
+\FunctionTok{plot}\NormalTok{(}
+\NormalTok{  roc\_rf,}
+  \AttributeTok{col =} \StringTok{"blue"}\NormalTok{,}
+  \AttributeTok{lwd =} \DecValTok{2}\NormalTok{,}
+  \AttributeTok{main =} \StringTok{"ROC Curve {-} Random Forest"}
+\NormalTok{)}
+
+\FunctionTok{abline}\NormalTok{(}\AttributeTok{a =} \DecValTok{0}\NormalTok{, }\AttributeTok{b =} \DecValTok{1}\NormalTok{, }\AttributeTok{lty =} \DecValTok{2}\NormalTok{, }\AttributeTok{col =} \StringTok{"gray"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{modeling_with_cleaned_data_files/figure-latex/unnamed-chunk-18-1.pdf}}
+
+\end{document}
