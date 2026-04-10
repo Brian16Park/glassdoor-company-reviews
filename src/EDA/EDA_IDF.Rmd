@@ -1,3 +1,14 @@
+---
+title: "EDA and IDF-modeling"
+author: "Daniel Cheung"
+date: "2026-04-09"
+output: 
+  pdf_document:
+    number_sections: true
+---
+
+# Preperation
+
 ```{r, message = F, warning = F}
 if (!requireNamespace("pacman", quietly = TRUE)) {
   install.packages("pacman")
@@ -23,13 +34,15 @@ p_load(pROC)
 
 ```
 
+
+
 ```{r}
 # ---------------------------------------------------------
 # 1. Data Preparation
 # ---------------------------------------------------------
 
-# df <- read_csv("../../data/processed/glassdoor_reviews_cleaned.csv")
-df <- read_csv("data/processed/glassdoor_reviews_cleaned_v2.csv")
+df <- read_csv("../../data/processed/glassdoor_reviews_cleaned_v2.csv")
+# df <- read_csv("data/processed/glassdoor_reviews_cleaned_v2.csv")
 
 cols <- c('summary', 'advice_to_management', 'review_pros', 'review_cons')
 encode_cols <- c('covid_related_review', 'flags_business_outlook', 'flags_ceo_approval',
@@ -42,7 +55,11 @@ df <- df %>%
   mutate(across(all_of(cols), ~replace_na(., "")))
 # Define the columns
 
+```
 
+In the preliminary phase of the Exploratory Data Analysis (EDA), a word cloud was generated to visualize the most prominent terms within the comment dataset. To ensure the visualization reflected meaningful semantic patterns, the initial stopword list was expanded to exclude high-frequency terms that lacked domain-specific informational value.
+
+```{r}
 
 # 1. Define custom stopwords
 # Equivalent to STOPWORDS.union(set([...]))
@@ -78,12 +95,16 @@ plotWordCloudFromDF <- function(df, column_name) {
 
 # 3. Loop through columns
 
+
 for (col in cols) {
   plotWordCloudFromDF(df, col)
 }
 
 ```
 
+
+
+The above is the data preperation step, mix up TF-IDF, dummy variable and dataset split.
 ```{r}
 # Split Data (equivalent to train_test_split)
 set.seed(42)
@@ -166,6 +187,13 @@ print(colnames(X_train_processed)[1:30])
 
 
 
+## word frequency
+
+
+
+This step focus on how to choose optimal parameter for TF-IDF. We gonna plot the word frequency bar chart. The stopwords should be removed since meaningless, and also the low-frequency words for being noisy.
+
+Since we have feature selection step in the further, we would rather import more words here.
 
 ```{r}
 
@@ -227,6 +255,12 @@ for (col in cols) {
 
 
 # Quit Model
+
+This model focus on whether people quit their job, and what factor affect mostly in their decision of job-quitting.
+
+Here we use Lasso-Logistics to select most important factor, Ridge-Logistics, and also Elastic-Logistics.
+
+
 
 ## Lasso
 
@@ -371,6 +405,7 @@ rbind(
 
 # Length Model
 
+Employee length is a fat tail variable and extremely right-skewed. Box-Cox trsnaformation applied here to deal with this problem.
 
 ```{r}
 hist(yl_train, freq = F)
