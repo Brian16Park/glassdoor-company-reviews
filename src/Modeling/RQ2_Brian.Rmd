@@ -1,0 +1,619 @@
+---
+title: "RQ2_Brian"
+author: "Brian Park"
+date: "2026-04-09"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+# Libraries
+```{r}
+pkg_needed <- c("tidyverse", "cluster", "factoextra", "pheatmap", "ggrepel")
+for (p in pkg_needed) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
+library(pheatmap)
+library(tidyverse)
+library(cluster)
+library(factoextra)
+library(here)
+library(cluster)
+library(ggrepel)
+```
+
+# For Cleaner Plots
+```{r}
+theme_set(
+  theme_minimal(base_size = 13) +
+    theme(
+      plot.title = element_text(face = "bold", size = 15),
+      plot.subtitle = element_text(size = 11),
+      axis.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom"
+    )
+)
+```
+
+# Read from current data version
+```{r}
+df <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned_v2.csv"))
+
+dim(df)
+head(df)
+```
+
+# 1. Feature Engineering
+
+### Variables that matter for culture similarity
+```{r}
+# Select variables related to company culture / employee experience
+glassdoor_model <- df %>%
+  select(
+    company_name,
+    rating_work_life,
+    rating_culture_values,
+    rating_senior_leadership,
+    rating_career_opportunities,
+    rating_compensation_benefits,
+    rating_overall,
+    rating_diversity_inclusion,
+    flags_recommend_frend,
+    flags_business_outlook,
+    flags_ceo_approval,
+    employee_status
+  )
+
+# Check missing values
+colSums(is.na(glassdoor_model))
+```
+
+### Convert categorical sentiment variables into numeric form
+```{r}
+# Recode recommendation / outlook / CEO approval into numeric variables
+glassdoor_model <- glassdoor_model %>%
+  mutate(
+    recommend_num = ifelse(flags_recommend_frend == "POSITIVE", 1, 0),
+
+    outlook_num = case_when(
+      flags_business_outlook == "POSITIVE" ~ 1,
+      flags_business_outlook == "NEUTRAL"  ~ 0.5,
+      flags_business_outlook == "NEGATIVE" ~ 0,
+      TRUE ~ NA_real_
+    ),
+
+    ceo_num = case_when(
+      flags_ceo_approval == "APPROVE"    ~ 1,
+      flags_ceo_approval == "NO_OPINION" ~ 0.5,
+      flags_ceo_approval == "DISAPPROVE" ~ 0,
+      TRUE ~ NA_real_
+    )
+  )
+```
+
+Clustering methods need numeric inputs.
+This is reasonable because:
+
+Positive sentiment = larger value
+Negative sentiment = smaller value
+Neutral or no opinion = middle value
+
+### Aggregate the data to the company level
+```{r}
+company_data <- glassdoor_model %>%
+  group_by(company_name) %>%
+  summarise(
+    work_life = mean(rating_work_life, na.rm = TRUE),
+    culture = mean(rating_culture_values, na.rm = TRUE),
+    leadership = mean(rating_senior_leadership, na.rm = TRUE),
+    career = mean(rating_career_opportunities, na.rm = TRUE),
+    compensation = mean(rating_compensation_benefits, na.rm = TRUE),
+    overall = mean(rating_overall, na.rm = TRUE),
+    diversity = mean(rating_diversity_inclusion, na.rm = TRUE),
+    recommend = mean(recommend_num, na.rm = TRUE),
+    outlook = mean(outlook_num, na.rm = TRUE),
+    ceo_approval = mean(ceo_num, na.rm = TRUE),
+    review_count = n()
+  )
+
+nrow(company_data)
+```
+
+The data is currently at the review level, meaning each row is one employee 
+review.
+
+But the question is about similar companies, so the clustering must happen at 
+the company level.
+
+This block creates one row per company, where each feature is the average across
+that company’s reviews.
+
+### Remove companies with too few reviews
+```{r}
+company_data_filtered <- company_data %>%
+  filter(review_count >= 2)
+
+# Check how many companies remain
+nrow(company_data_filtered)
+```
+
+A minimum review threshold was applied to ensure stability in company-level 
+averages. While higher thresholds (e.g., 5 reviews) produce more reliable 
+estimates, they significantly reduce the number of companies available for 
+analysis. A threshold of at least 2 reviews was selected to balance reliability
+and sample size, resulting in 72 companies included in the clustering analysis.
+This choice allows for more meaningful cluster structure while acknowledging
+some variability in companies with fewer reviews.
+
+### Create the feature matrix for clustering
+```{r}
+clustering_features <- company_data_filtered %>%
+  select(
+    work_life,
+    culture,
+    leadership,
+    career,
+    compensation,
+    overall,
+    diversity,
+    recommend,
+    outlook,
+    ceo_approval
+  )
+```
+
+### Scale the Features
+```{r}
+scaled_features <- scale(clustering_features)
+
+# Look at first few rows
+head(scaled_features)
+```
+
+### Feature Correlation Analysis
+```{r}
+feature_cor <- cor(clustering_features)
+
+pheatmap(
+  feature_cor,
+  main = "Correlation Heatmap of Culture Features",
+  display_numbers = TRUE
+)
+```
+
+The correlation heatmap shows that many workplace culture variables are
+moderately to strongly positively correlated. In particular, culture, 
+leadership, and overall ratings exhibit strong relationships, suggesting that 
+they capture a shared underlying dimension of workplace quality.
+
+In contrast, variables such as business outlook and CEO approval are less 
+strongly correlated with the core culture metrics, indicating that they may 
+capture distinct aspects of employee perception.
+
+This pattern helps explain why clustering produces a strong primary separation,
+as many features move together, while still allowing for meaningful variation
+across companies.
+
+### Elbow Method
+```{r}
+set.seed(123)
+
+fviz_nbclust(scaled_features, kmeans, method = "wss") +
+  labs(title = "Elbow Method for Choosing Number of Clusters")
+```
+
+### Silhouette Score
+```{r}
+fviz_nbclust(scaled_features, kmeans, method = "silhouette") +
+  labs(title = "Silhouette Method for Choosing Number of Clusters")
+```
+
+### Compare multiple k values
+```{r}
+set.seed(123)
+
+k_grid <- 2:4
+
+k_results <- purrr::map_dfr(k_grid, function(k) {
+  km <- kmeans(scaled_features, centers = k, nstart = 25)
+  sil_obj <- silhouette(km$cluster, dist(scaled_features))
+  
+  tibble(
+    k = k,
+    tot_withinss = km$tot.withinss,
+    betweenss_ratio = km$betweenss / km$totss,
+    avg_silhouette = mean(sil_obj[, 3])
+  )
+})
+
+k_results
+```
+
+A comparison of clustering solutions for k = 2, 3, and 4 shows that the 
+two-cluster solution achieves the highest silhouette score, indicating the
+strongest separation between groups. However, it explains less variance in the
+data, as reflected by the lower between-cluster sum of squares ratio.
+
+The three-cluster solution provides a balance between cluster separation and explanatory power. While its silhouette score is slightly lower, it captures a
+larger proportion of the variance and produces a more interpretable segmentation
+into low, moderate, and high workplace culture groups.
+
+The four-cluster solution further increases explained variance but results in a noticeable drop in silhouette score, suggesting over-segmentation and less
+stable clusters.
+
+Based on this trade-off, the three-cluster solution was selected as the final
+model.
+
+# 2. K-means Model
+```{r}
+set.seed(123)
+
+kmeans_model <- kmeans(scaled_features, centers = 3, nstart = 25)
+
+company_data_filtered$cluster <- factor(kmeans_model$cluster)
+
+# View cluster sizes
+table(company_data_filtered$cluster)
+```
+
+### Cluster quality metrics
+```{r}
+# Silhouette scores
+sil <- silhouette(kmeans_model$cluster, dist(scaled_features))
+
+# Average silhouette width
+avg_sil_width <- mean(sil[, 3])
+avg_sil_width
+
+# Between-cluster sum of squares ratio
+between_total_ratio <- kmeans_model$betweenss / kmeans_model$totss
+between_total_ratio
+```
+Overall, the clustering results indicate moderate structure in the data. While
+the silhouette score suggests that cluster separation is not very strong, the between-to-total sum of squares ratio shows that a substantial portion of the
+variation is captured by the clustering. This implies that the identified 
+clusters provide a useful, though not perfectly distinct, grouping of companies
+based on workplace culture.
+
+The relatively low silhouette score reflects the continuous nature of workplace culture, where companies may share overlapping characteristics rather than 
+forming sharply separated groups.
+
+### Silhouette plot for the final model
+```{r}
+fviz_silhouette(sil) +
+  labs(title = "Silhouette Plot for Final K-Means Model")
+```
+The silhouette plot provides a company-level view of cluster membership quality. Companies with larger silhouette values are well matched to their assigned 
+cluster, while companies with values near zero lie closer to the boundary 
+between clusters.
+
+### Looking at Cluster Centers
+```{r}
+cluster_summary <- company_data_filtered %>%
+  group_by(cluster) %>%
+  summarise(
+    work_life = mean(work_life),
+    culture = mean(culture),
+    leadership = mean(leadership),
+    career = mean(career),
+    compensation = mean(compensation),
+    overall = mean(overall),
+    diversity = mean(diversity),
+    recommend = mean(recommend),
+    outlook = mean(outlook),
+    ceo_approval = mean(ceo_approval),
+    companies_in_cluster = n()
+  )
+
+cluster_summary_round <- cluster_summary %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+cluster_summary_round
+```
+
+The three clusters can be interpreted as broad workplace culture groups.
+
+Cluster 1 represents low-rated companies. These companies have the weakest 
+scores across work-life balance, culture and values, leadership, and overall satisfaction. This cluster reflects less favorable employee experiences.
+
+Cluster 2 represents moderate companies. They have mid-range scores across most culture-related dimensions. They appear to provide average employee experiences,
+with neither especially poor nor especially strong workplace culture outcomes.
+
+Cluster 3 represents high-rated companies. These companies score highest on 
+work-life balance, culture and values, leadership, compensation, and overall satisfaction. This cluster captures firms with the most favorable 
+employee-reported culture profiles.
+
+### Visualize the Clusters
+```{r}
+fviz_cluster(kmeans_model, data = scaled_features,
+             geom = "point",
+             ellipse.type = "convex",
+             main = "K-Means Clustering of Companies by Culture")
+```
+
+### PCA Plot
+```{r}
+pca_df <- prcomp(scaled_features)
+
+pca_scores <- as.data.frame(pca_df$x[, 1:2])
+pca_scores$company_name <- company_data_filtered$company_name
+pca_scores$cluster <- company_data_filtered$cluster
+
+highlight_companies <- c("Google", "Microsoft", "Apple", "Amazon", "Meta")
+
+pca_scores$label <- ifelse(
+  pca_scores$company_name %in% highlight_companies,
+  pca_scores$company_name,
+  NA
+)
+
+ggplot(pca_scores, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_text_repel(aes(label = label), na.rm = TRUE) +
+  labs(
+    title = "PCA View of Company Culture Clusters",
+    subtitle = "Selected companies labeled",
+    x = "PC1",
+    y = "PC2"
+  )
+```
+
+# Cluster Profile Plot
+```{r}
+cluster_profile_long <- cluster_summary %>%
+  select(cluster, work_life, culture, leadership, career,
+         compensation, overall, diversity, recommend, outlook, ceo_approval) %>%
+  pivot_longer(
+    cols = -cluster,
+    names_to = "feature",
+    values_to = "mean_value"
+  )
+
+ggplot(cluster_profile_long, aes(x = feature, y = mean_value, fill = cluster)) +
+  geom_col(position = "dodge") +
+  theme_minimal() +
+  labs(
+    title = "Cluster Profiles Across Culture Features",
+    x = "Feature",
+    y = "Cluster Mean"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Find companies similar to a chosen company
+```{r}
+target_company <- "Google"
+
+target_cluster <- company_data_filtered %>%
+  filter(company_name == target_company) %>%
+  pull(cluster)
+
+similar_companies <- company_data_filtered %>%
+  filter(cluster == target_cluster) %>%
+  arrange(desc(work_life), desc(culture))
+
+similar_companies
+```
+
+### Find the most similar companies by distance
+```{r}
+scaled_df <- as.data.frame(scaled_features)
+scaled_df$company_name <- company_data_filtered$company_name
+
+target_company <- "Google"
+
+target_row <- scaled_df %>%
+  filter(company_name == target_company) %>%
+  select(-company_name)
+
+nearest_companies <- scaled_df %>%
+  rowwise() %>%
+  mutate(distance = sqrt(sum((c_across(-company_name) - as.numeric(target_row))^2))) %>%
+  ungroup() %>%
+  left_join(
+    company_data_filtered %>%
+      select(company_name, cluster, overall, culture, work_life, review_count),
+    by = "company_name"
+  ) %>%
+  arrange(distance) %>%
+  slice(1:10)
+
+nearest_companies
+```
+
+```{r}
+ggplot(nearest_companies %>% filter(company_name != target_company),
+       aes(x = reorder(company_name, distance), y = distance, fill = cluster)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Companies Most Similar to Google",
+    x = "Company",
+    y = "Distance"
+  )
+```
+
+### Feature Contribution to Similarity
+```{r}
+# Compute per-feature squared differences
+feature_contributions <- scaled_df %>%
+  filter(company_name != target_company) %>%
+  mutate(across(-company_name,
+                ~ (. - as.numeric(target_row[[cur_column()]]))^2)) %>%
+  mutate(total_distance = rowSums(across(-company_name))) %>%
+  arrange(total_distance)
+
+# Top 5 most similar companies
+top_similar <- feature_contributions %>%
+  slice(1:5)
+
+top_similar
+
+# Average contribution per feature
+feature_importance <- top_similar %>%
+  select(-company_name, -total_distance) %>%
+  summarise(across(everything(), mean)) %>%
+  pivot_longer(cols = everything(),
+               names_to = "feature",
+               values_to = "avg_contribution") %>%
+  arrange(avg_contribution)
+
+feature_importance
+```
+
+```{r}
+ggplot(feature_importance,
+       aes(x = reorder(feature, avg_contribution),
+           y = avg_contribution)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Feature Contributions to Similarity with Google",
+    x = "Feature",
+    y = "Average Squared Difference"
+  )
+```
+
+To better understand what drives similarity, the Euclidean distance was 
+decomposed into feature-level contributions, allowing identification of which
+workplace culture dimensions are most similar between Google and its nearest
+companies.
+
+# Limitations of K-Means
+This analysis has several limitations.
+
+First, some companies have only a small number of reviews, which may make their
+average culture ratings less stable. Although a minimum threshold of two reviews
+was used to preserve sample size, this still introduces some uncertainty. 
+
+Second, all selected features were treated as equally important in the 
+clustering process after scaling, even though work-life balance and culture 
+values may be more central to the research question than other variables. 
+
+Third, K-means clustering requires the number of clusters to be chosen in 
+advance, so the final solution depends partly on the selected value of k. 
+
+Finally, the results reflect only the available Glassdoor reviews in this sample
+and may not fully capture the broader culture of each company.
+
+# Conclusion
+Overall, the K-means clustering analysis identified three broad groups of 
+companies based on employee-reported workplace culture characteristics. The 
+results suggest that companies can be grouped into low, moderate, and 
+high-culture profiles using features such as work-life balance, culture and 
+values, leadership, compensation, and recommendation rates. By combining cluster membership with distance-based similarity, the analysis provides a pragmatic 
+way to identify companies with workplace cultures similar to a target firm.
+
+# 3. Hierarchical Clustering
+```{r}
+dist_matrix <- dist(scaled_features, method = "euclidean")
+
+hc_model <- hclust(dist_matrix, method = "ward.D2")
+```
+
+### Dendrogram
+```{r}
+fviz_dend(
+  hc_model,
+  k = 3,
+  rect = TRUE,
+  rect_fill = TRUE,
+  show_labels = FALSE,
+  lwd = 0.6,
+  main = "Hierarchical Clustering Dendrogram"
+)
+```
+
+The dendrogram shows a large separation at higher levels of the hierarchy, 
+indicating that some groups of companies are more distinctly separated, while
+finer structure exists within these broader groups.
+
+### Cut into clusters
+```{r}
+hc_clusters <- cutree(hc_model, k = 3)
+
+company_data_filtered$hc_cluster <- factor(hc_clusters)
+
+# Compare with K-means
+table(KMeans = company_data_filtered$cluster,
+      Hierarchical = company_data_filtered$hc_cluster)
+```
+```{r}
+sil_hc <- silhouette(hc_clusters, dist(scaled_features))
+data.frame(
+  sil_h = mean(sil_hc[,3]),
+  sil_k = mean(sil[,3])
+)
+```
+
+To compare clustering quality across methods, silhouette scores were computed
+for both K-means and hierarchical clustering. The K-means model achieved a 
+slightly higher silhouette score (0.242) compared to hierarchical clustering
+(0.209), indicating that it provides better separation between clusters.
+
+A comparison between K-means and hierarchical clustering shows that the cluster assignments are largely consistent across methods. In particular, one cluster is perfectly aligned between the two approaches, indicating a stable group of 
+companies with similar culture characteristics.
+
+However, some variation exists in the middle cluster, where companies are 
+distributed across multiple hierarchical groups. This suggests that companies 
+with moderate workplace culture characteristics are less distinctly separated, reflecting the continuous nature of culture-related variables.
+
+Overall, the general agreement between the two clustering methods supports the robustness of the identified company groupings.
+
+### Hierarchical cluster scatterplot
+```{r}
+fviz_cluster(
+  list(data = scaled_features, cluster = hc_clusters),
+  geom = "point",
+  ellipse.type = "convex",
+  main = "Hierarchical Clustering of Companies"
+)
+```
+
+The hierarchical cluster visualization shows clear separation along the first
+principal dimension, which explains the majority of the variation in the data
+(61.6%). Companies in the high-culture cluster are well separated from the rest,
+while moderate companies show some overlap with adjacent groups. This pattern is consistent with earlier findings that workplace culture varies along a continuum
+rather than forming perfectly distinct categories.
+
+### Heatmap of clustered companies
+```{r}
+pheatmap(
+  scale(clustering_features),
+  cluster_rows = hc_model,
+  cluster_cols = TRUE,
+  show_rownames = FALSE,
+  main = "Clustered Heatmap of Company Culture Features"
+)
+```
+
+The heatmap groups companies based on similarity rather than ordering them from
+highest to lowest. One group of companies shows consistently below-average 
+values across most features (blue tones), representing lower workplace culture
+ratings. Another group shows values closer to the average (white tones), 
+indicating moderate workplace culture. A third group exhibits higher values
+across features (warmer tones), representing stronger workplace culture 
+profiles.
+
+This confirms that the clustering captures meaningful differences in company 
+culture, even though the ordering of groups in the heatmap is not based on
+ranking.
+
+# Limitations of Hierarchical Clustering
+Hierarchical clustering also has several limitations. First, the method is
+sensitive to the choice of distance metric and linkage criteria, meaning that 
+different specifications (e.g., Euclidean distance or alternative 
+linkage methods) may produce different cluster structures.
+
+Second, hierarchical clustering is based on a sequence of irreversible merges,
+so early grouping decisions cannot be adjusted later in the process. This can
+lead to suboptimal cluster assignments if initial merges are not ideal.
+
+Additionally, the method can be sensitive to outliers, which may distort the
+dendrogram structure and influence cluster formation. Finally, unlike K-means, hierarchical clustering does not provide a clear objective criterion for 
+selecting the number of clusters, requiring subjective interpretation of the dendrogram.
