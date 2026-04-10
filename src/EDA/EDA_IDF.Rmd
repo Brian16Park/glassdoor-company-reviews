@@ -17,11 +17,19 @@ p_load(tm)
 p_load(stopwords)
 p_load(RColorBrewer)
 
+p_load(glmnet)
+p_load(pROC)
+
+
+```
+
+```{r}
 # ---------------------------------------------------------
 # 1. Data Preparation
 # ---------------------------------------------------------
 
-df <- read_csv("../../data/processed/glassdoor_reviews_cleaned.csv")
+# df <- read_csv("../../data/processed/glassdoor_reviews_cleaned.csv")
+df <- read_csv("data/processed/glassdoor_reviews_cleaned_v2.csv")
 
 cols <- c('summary', 'advice_to_management', 'review_pros', 'review_cons')
 encode_cols <- c('covid_related_review', 'flags_business_outlook', 'flags_ceo_approval',
@@ -29,7 +37,7 @@ encode_cols <- c('covid_related_review', 'flags_business_outlook', 'flags_ceo_ap
                  'rating_diversity_inclusion', 'rating_overall', 'rating_work_life',
                  'rating_compensation_benefits', 'rating_senior_leadership',
                  'rating_career_opportunities',
-                 'has_review_text')
+                 'has_review_text', 'career_missing')
 df <- df %>%
   mutate(across(all_of(cols), ~replace_na(., "")))
 # Define the columns
@@ -81,7 +89,7 @@ for (col in cols) {
 set.seed(42)
 df2 = df %>%
   subset(select = -c(rating_date, employee_status, company_name, 
-  employee_location, employee_job_title, sector,
+  employee_location, employee_job_title, sector, employee_job_end_year,
   review_id))
 
 
@@ -90,43 +98,44 @@ rec <- recipe(employee_length + employee_job_quit ~ ., data = df2)  %>%
   step_mutate(across(all_of(encode_cols), as.factor)) %>%
   # Handle Numeric/Categorical preprocessing
   step_novel(all_of(encode_cols)) %>% 
-  step_dummy(all_of(encode_cols), one_hot = TRUE) %>%
+  step_dummy(all_of(encode_cols), one_hot = FALSE) %>%
   
   # Text Processing for 'summary' (max_features = 200)
   step_tokenize(summary) %>%
   step_stopwords(summary) %>%
   step_ngram(summary, min_num_tokens = 1, num_tokens = 3) %>%
   step_tokenfilter(summary, max_tokens = 200, min_times = 5) %>%
-  step_tfidf(summary, prefix = "summary__") %>%
+  step_tfidf(summary, prefix = "") %>%
   
   # Text Processing for 'advice_to_management' (max_features = 200)
   step_tokenize(advice_to_management) %>%
   step_stopwords(advice_to_management) %>%
   step_ngram(advice_to_management, min_num_tokens = 1, num_tokens = 3) %>%
   step_tokenfilter(advice_to_management, max_tokens = 200, min_times = 5) %>%
-  step_tfidf(advice_to_management, prefix = "advice__") %>%
+  step_tfidf(advice_to_management, prefix = "") %>%
   
   # Text Processing for 'review_pros' (max_features = 300)
   step_tokenize(review_pros) %>%
   step_stopwords(review_pros) %>%
   step_ngram(review_pros, min_num_tokens = 1, num_tokens = 3) %>%
   step_tokenfilter(review_pros, max_tokens = 300, min_times = 5) %>%
-  step_tfidf(review_pros, prefix = "pros__") %>%
+  step_tfidf(review_pros, prefix = "") %>%
   
   # Text Processing for 'review_cons' (max_features = 400)
   step_tokenize(review_cons) %>%
   step_stopwords(review_cons) %>%
   step_ngram(review_cons, min_num_tokens = 1, num_tokens = 3) %>%
   step_tokenfilter(review_cons, max_tokens = 400, min_times = 5) %>%
-  step_tfidf(review_cons, prefix = "cons__") %>%
-  
+  step_tfidf(review_cons, prefix = "") %>%
+  step_zv(all_predictors()) %>%
   # Scaling (Equivalent to MaxAbsScaler)
   # R's step_normalize is Z-score; for MaxAbs we use a custom scaling or range
-  step_range(all_predictors(), min = -1, max = 1)
+  step_mutate(across(where(is.numeric), ~replace_na(., 0))) %>%
+  step_range(all_predictors(), min =0, max = 1)
 
 
 set.seed(42)
-data_split <- df2$employee_length%>%
+data_split <- df2$employee_job_quit%>%
   createDataPartition(p = 0.8, list = F)
 train_data <- df2[data_split, ]
 test_data  <- df2[-data_split, ]
@@ -135,12 +144,15 @@ test_data  <- df2[-data_split, ]
 prep_rec <- prep(rec, training = train_data)
 
 # Transform the datasets (Equivalent to fit_transform / transform)
-X_train_processed <- bake(prep_rec, new_data = NULL, all_predictors(), composition = "dgCMatrix")
+X_train_processed <- bake(prep_rec, new_data = train_data, all_predictors(), composition = "dgCMatrix")
 X_test_processed  <- bake(prep_rec, new_data = test_data, all_predictors(), composition = "dgCMatrix")
 
 # Target vectors
 yl_train <- train_data$employee_length
 yq_train <- as.integer(train_data$employee_job_quit)
+
+yl_test <- test_data$employee_length
+yq_test <- as.integer(test_data$employee_job_quit)
 
 # --- Data Structural Audit ---
 cat("--- Data Structural Audit ---\n")
@@ -153,9 +165,10 @@ print(colnames(X_train_processed)[1:30])
 
 
 
+
+
 ```{r}
-library(tidyverse)
-library(tidytext)
+
 
 # clean function
 clean_words <- function(data, column_name) {
@@ -210,6 +223,244 @@ results <- list()
 for (col in cols) {
   results[[col]] <- clean_words(df, col)
 }
+```
+
+
+# Quit Model
+
+## Lasso
+
+```{r}
+
+tab <- table(yq_train)
+weights <- ifelse(yq_train == 1, 
+                  sum(tab) / (2 * tab["1"]), 
+                  sum(tab) / (2 * tab["0"]))
+
+
+lambda <- 10^seq(1,-2,length = 100)
+model.quit.lasso <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = 1, lambda = lambda, weights = weights)
+
+model.quit.lasso_coef <- predict(model.quit.lasso, s = model.quit.lasso$lambda.min, type = "coefficients")
+
+model.quit.lasso_coefs <- as.matrix(model.quit.lasso_coef)
+model.quit.lasso_vars <- data.frame(
+  Variable = rownames(model.quit.lasso_coefs),
+  Coefficient = as.numeric(model.quit.lasso_coefs)
+) %>% filter(Coefficient != 0 & Variable != "(Intercept)") %>%
+  arrange(Coefficient)
+
+
+model.quit.lasso_vars
+
+roc_obj <- roc(yq_train, predict(model.quit.lasso, newx = X_train_processed, type = "response"))
+best_threshold.lasso <- coords(roc_obj, "best", ret = "threshold")[1,1]
+
+yq_pred.lasso <- ifelse(predict(model.quit.lasso, newx = X_test_processed, type = "response")>best_threshold.lasso, 1, 0)
+log_roc_curve.lasso <- roc(yq_test, yq_pred.lasso)
+plot(log_roc_curve.lasso)
+
+auc(log_roc_curve.lasso)
+```
+
+
+## Ridge
+
+
+```{r}
+model.quit.ridge <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = 0, lambda = lambda, weights = weights)
+
+model.quit.ridge_coef <- predict(model.quit.ridge, s = model.quit.ridge$lambda.min, type = "coefficients")
+
+model.quit.ridge_coefs <- as.matrix(model.quit.ridge_coef)
+model.quit.ridge_vars <- data.frame(
+  Variable = rownames(model.quit.ridge_coefs),
+  Coefficient = as.numeric(model.quit.ridge_coefs)
+) %>% filter(Coefficient != 0 & Variable != "(Intercept)") %>%
+  arrange(Coefficient)
+
+
+model.quit.ridge_vars
+
+
+
+roc_obj <- roc(yq_train, predict(model.quit.ridge, newx = X_train_processed, type = "response"))
+best_threshold.ridge <- coords(roc_obj, "best", ret = "threshold")[1,1]
+
+yq_pred.ridge <- ifelse(predict(model.quit.ridge, newx = X_test_processed, type = "response")>best_threshold.ridge, 1, 0)
+log_roc_curve.ridge <- roc(yq_test, yq_pred.ridge)
+plot(log_roc_curve.ridge)
+
+auc(log_roc_curve.ridge)
+```
+
+
+
+
+## Elastic Net
+
+
+```{r}
+results = list()
+for(a in seq(0,1,0.05)){
+  model.quit.elastic <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = a, lambda = lambda, weights = weights)
+  results[[as.character(a)]] <- min(model.quit.elastic$cvm)
+}
+
+# find best alpha
+best_alpha <- names(which.min(unlist(results)))
+print(paste("The best Alpha is:", best_alpha))
+
+model.quit.elastic <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = best_alpha, lambda = lambda)
+
+model.quit.elastic_coef <- predict(model.quit.elastic, s = model.quit.elastic$lambda.min, type = "coefficients")
+
+model.quit.elastic_coefs <- as.matrix(model.quit.elastic_coef)
+model.quit.elastic_vars <- data.frame(
+  Variable = rownames(model.quit.elastic_coefs),
+  Coefficient = as.numeric(model.quit.elastic_coefs)
+) %>% filter(Coefficient != 0 & Variable != "(Intercept)") %>%
+  arrange(Coefficient)
+
+
+model.quit.elastic_vars
+
+
+
+roc_obj <- roc(yq_train, predict(model.quit.elastic, newx = X_train_processed, type = "response"))
+best_threshold.elastic <- coords(roc_obj, "best", ret = "threshold")[1,1]
+
+yq_pred.elastic <- ifelse(predict(model.quit.elastic, newx = X_test_processed, type = "response")>best_threshold.elastic, 1, 0)
+log_roc_curve.elastic <- roc(yq_test, yq_pred.elastic)
+plot(log_roc_curve.elastic)
+
+auc(log_roc_curve.elastic)
+```
+
+
+
+## Report
+
+```{r}
+get_metrics_bin <- function(y_true, y_pred, name,
+    positive = "1") {
+  cm_obj <- confusionMatrix(
+    data = as.factor(y_pred),
+    reference = as.factor(y_true),
+    positive = positive
+  )
+  out <- c(
+    Sensitivity = unname(cm_obj$byClass["Sensitivity"]),
+    Specificity = unname(cm_obj$byClass["Specificity"]),
+    Accuracy    = unname(cm_obj$overall["Accuracy"]),
+    AOC = auc(roc(yq_test, yq_pred.ridge))
+  )
+  return (c(Name = name, round(out, 4)))
+}
+
+
+rbind(
+  get_metrics_bin(yq_test, yq_pred.lasso, "Lasso-Logistics"),
+  get_metrics_bin(yq_test, yq_pred.ridge, "Ridge-Logistics"),
+  get_metrics_bin(yq_test, yq_pred.elastic, "Elastic-Logistics")
+
+)
+
+
+```
+
+# Length Model
+
+
+```{r}
+hist(yl_train, freq = F)
+
+p_load(forecast)
+
+lambda <- BoxCox.lambda(yl_train)
+
+print(paste("Optimal Lambda:", lambda))
+
+yl_train2 <- BoxCox(yl_train, lambda)
+yl_test2 <- BoxCox(yl_test, lambda)
+
+
+hist(yl_train2, freq = F)
+
+```
+
+
+
+## Lasso
+
+```{r}
+lambda <- 10^seq(1,-2,length = 100)
+model.length.lasso <- cv.glmnet(X_train_processed, yl_train, alpha = 1, lambda = lambda)
+
+model.length.lasso_coef <- predict(model.length.lasso, s = model.length.lasso$lambda.min, type = "coefficients")
+
+model.length.lasso_coefs <- as.matrix(model.length.lasso_coef)
+model.length.lasso_vars <- data.frame(
+  Variable = rownames(model.length.lasso_coefs),
+  Coefficient = as.numeric(model.length.lasso_coefs)
+) %>% filter(Coefficient != 0 & Variable != "(Intercept)") %>%
+  arrange(Coefficient)
+
+
+model.length.lasso_vars
+
+```
+
+
+## Ridge
+
+
+```{r}
+model.length.ridge <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = 0, lambda = lambda)
+
+model.length.ridge_coef <- predict(model.length.ridge, s = model.length.ridge$lambda.min, type = "coefficients")
+
+model.length.ridge_coefs <- as.matrix(model.length.ridge_coef)
+model.length.ridge_vars <- data.frame(
+  Variable = rownames(model.length.ridge_coefs),
+  Coefficient = as.numeric(model.length.ridge_coefs)
+) %>% filter(Coefficient != 0 & Variable != "(Intercept)") %>%
+  arrange(Coefficient)
+
+
+model.length.ridge_vars
+```
+
+
+
+
+## Elastic Net
+
+
+```{r}
+results = list()
+for(a in seq(0,1,0.05)){
+  model.length.elastic <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = a, lambda = lambda)
+  results[[as.character(a)]] <- min(model.length.elastic$cvm)
+}
+
+# find best alpha
+best_alpha <- names(which.min(unlist(results)))
+print(paste("The best Alpha is:", best_alpha))
+
+model.length.elastic <- cv.glmnet(X_train_processed, yq_train, family = binomial, alpha = best_alpha, lambda = lambda)
+
+model.length.elastic_coef <- predict(model.length.elastic, s = model.length.elastic$lambda.min, type = "coefficients")
+
+model.length.elastic_coefs <- as.matrix(model.length.elastic_coef)
+model.length.elastic_vars <- data.frame(
+  Variable = rownames(model.length.elastic_coefs),
+  Coefficient = as.numeric(model.length.elastic_coefs)
+) %>% filter(Coefficient != 0 & Variable != "(Intercept)") %>%
+  arrange(Coefficient)
+
+
+model.quit.elastic_vars
 ```
 
 
