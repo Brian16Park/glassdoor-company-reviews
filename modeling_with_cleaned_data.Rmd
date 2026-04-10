@@ -1,0 +1,437 @@
+---
+title: "modeling_with_cleaned_data"
+author: "Quynh Tran"
+date: "2026-04-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import packages
+```{r}
+library(MASS)
+library(tidyverse)
+#install.packages("lattice")
+library(lattice)
+library(caret)
+#install.packages("Matrix")
+library(Matrix)
+library(glmnet)
+library(mlbench)
+library(caret)
+library(here)
+```
+
+# Import dataset
+```{r}
+df <- read.csv(here("data/processed/reviews_with_sent_scores.csv"))
+#view(df)
+summary(df)
+```
+# Logistic Regression model:
+# Create a subset for Logistic regression and Convert categorical variables:
+```{r}
+log_data <- df %>% 
+  select( 
+    flags_recommend_frend, 
+    rating_culture_values, 
+    rating_work_life, 
+    rating_compensation_benefits, 
+    rating_senior_leadership, 
+    rating_career_opportunities, 
+    rating_diversity_inclusion, 
+    flags_business_outlook, 
+    flags_ceo_approval,
+    employee_length, 
+    employee_job_quit, 
+    sector, 
+    covid_related_review, 
+    career_missing
+  )
+
+# Recode recommendation / outlook / CEO approval into numeric variables
+log_data <- log_data %>%
+  dplyr::mutate(
+    employee_job_quit = as.integer(employee_job_quit),
+    career_missing = as.integer(career_missing),
+    flags_recommend_frend = as.factor(flags_recommend_frend),
+    sector = as.integer(as.factor(sector)),
+    flags_business_outlook = as.integer(as.factor(flags_business_outlook)),
+    flags_ceo_approval = as.integer(as.factor(flags_ceo_approval))
+  )
+```
+
+
+# Split the data into training-testing
+```{r}
+library(caret)
+
+set.seed(123)
+
+train_index <- createDataPartition(
+  log_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+train.data <- log_data[train_index, ]
+test.data <- log_data[-train_index, ]
+
+# Check class imbalance after splitting
+prop.table(table(train.data$flags_recommend_frend))
+prop.table(table(test.data$flags_recommend_frend))
+```
+```{r}
+# Fit the model
+set.seed(123)
+model_logit <- glm(
+  flags_recommend_frend ~.,
+  data = train.data,
+  family = binomial
+)
+
+summary(model_logit)
+```
+
+```{r}
+# Predict on test data
+log_pred_prob <- predict(model_logit, test.data, type = "response")
+log_pred_prob
+```
+
+# Evaluate different classification thresholds to select the best one using F1 scores
+# F1 = 2 * (precision * recall) / (precision + recall)
+```{r}
+# Step 5.1: Create a Sequence of Thresholds
+thresholds <- seq(0.1, 1.0, by = 0.1)
+
+# Step 5.2: Define a function to calculate F1 score
+f1_score <- function(actual, predicted) {
+
+  tp <- sum(actual == "POSITIVE" & predicted == "POSITIVE")
+  fp <- sum(actual == "NEGATIVE" & predicted == "POSITIVE")
+  fn <- sum(actual == "POSITIVE" & predicted == "NEGATIVE")
+
+  precision <- ifelse((tp + fp) == 0, 0, tp / (tp + fp))
+  recall <- ifelse((tp + fn) == 0, 0, tp / (tp + fn))
+
+  if (precision + recall == 0) return(0)
+
+  f1 <- 2 * precision * recall / (precision + recall)
+
+  return(f1)
+}
+
+# Step 5.3: Loop Through Thresholds
+f1_results <- data.frame(threshold = thresholds, F1 = NA)
+
+for (i in seq_along(thresholds)) {
+  
+  t <- thresholds[i]
+  
+  pred_class <- ifelse(log_pred_prob > t, "POSITIVE", "NEGATIVE")
+  
+  f1_results$F1[i] <- f1_score(test.data$flags_recommend_frend, pred_class)
+}
+
+# Step 5.4: Print F1 scores
+print(f1_results)
+
+# Step 5.5: Choose the threshold with the best F1 score
+best_threshold <- f1_results$threshold[which.max(f1_results$F1)]
+best_f1 <- max(f1_results$F1)
+
+best_threshold
+best_f1
+```
+# Convert Probabilities to Class Predictions using threshold of 0.4
+```{r}
+log_pred_class <- ifelse(log_pred_prob > 0.4,"POSITIVE", "NEGATIVE")
+
+# Convert to factor
+log_pred_class <- as.factor(log_pred_class)
+```
+
+# Evaluate model performance
+```{r}
+logistic_cm <- confusionMatrix(log_pred_class, test.data$flags_recommend_frend)
+logistic_cm
+```
+
+# ROC Curve and AUC
+```{r}
+library(pROC)
+
+log_roc_curve <- roc(test.data$flags_recommend_frend, log_pred_prob)
+plot(log_roc_curve)
+
+auc(log_roc_curve)
+```
+# Decision Tree
+
+# Import packages
+```{r}
+# ---- 0. Install / load packages ----
+pkg_needed <- c("caret", "rpart", "rattle")
+for (p in pkg_needed) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
+#install.packages("bitops")
+#install.packages("ggplot2")
+#install.packages("lattice")
+#install.packages("Matrix")
+#install.packages("rpart.plot")
+library(caret)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+```
+
+# Create a subset for decision tree 
+```{r}
+tree_data <- df %>% 
+  select( 
+    flags_recommend_frend, 
+    rating_overall,
+    rating_culture_values, 
+    rating_work_life, 
+    rating_compensation_benefits, 
+    rating_senior_leadership, 
+    rating_career_opportunities, 
+    rating_diversity_inclusion, 
+    flags_business_outlook, 
+    flags_ceo_approval,
+    employee_length, 
+    employee_job_quit, 
+    sector, 
+    covid_related_review, 
+    career_missing
+  )
+
+# Recode recommendation / outlook / CEO approval into numeric variables
+tree_data <- tree_data %>%
+  dplyr::mutate(
+    employee_job_quit = as.integer(employee_job_quit),
+    career_missing = as.integer(career_missing),
+    flags_recommend_frend = as.factor(flags_recommend_frend),
+    sector = as.integer(as.factor(sector)),
+    flags_business_outlook = as.integer(as.factor(flags_business_outlook)),
+    flags_ceo_approval = as.integer(as.factor(flags_ceo_approval))
+  )
+```
+
+# Split the dataset into training and testing
+```{r}
+library(caret)
+
+set.seed(123)
+
+train_index <- createDataPartition(
+  tree_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+tree.train.data <- tree_data[train_index, ]
+tree.test.data <- tree_data[-train_index, ]
+
+# Check class imbalance after splitting
+prop.table(table(tree.train.data$flags_recommend_frend))
+prop.table(table(tree.test.data$flags_recommend_frend))
+```
+
+# Train the Decision Tree
+```{r}
+# Fit the initial tree
+set.seed(123)
+tree_model <- rpart(
+  flags_recommend_frend ~ .,
+  data = tree.train.data,
+  method = "class", 
+  control = rpart.control(cp = 0, xval = 10, minsplit = 2, minbucket = 1)
+)
+
+# Visualize the tree
+rpart.plot(tree_model, main = "Initial Tree")
+
+# Check CP table
+printcp(tree_model)
+
+# Select the best CP value
+best_cp <- tree_model$cptable[
+  which.min(tree_model$cptable[, "xerror"]),
+  "CP"
+]
+
+cat("\nBest CP value:", best_cp, "\n")
+
+# Prune the tree using best CP value
+pruned_tree <- prune(tree_model, cp = best_cp)
+
+# Visualize the pruned tree
+fancyRpartPlot(pruned_tree, main = "Optimal Pruned Tree")
+
+# Predict on test data
+pred_test <- predict(pruned_tree, newdata = tree.test.data, type = "class")
+
+# Confusion Matrix and Metrics
+pruned_tree_cm <- confusionMatrix(pred_test, tree.test.data$flags_recommend_frend)
+pruned_tree_cm
+```
+# ROC curve and AUC 
+```{r}
+# ROC and AUC for pruned tree
+#install.packages("pROC")
+library(pROC)
+
+# Make sure outcome levels are ordered correctly
+test.data$flags_recommend_frend <- factor(
+  tree.test.data$flags_recommend_frend,
+  levels = c("NEGATIVE", "POSITIVE")
+)
+
+# Predicted probabilities
+pred_prob <- predict(pruned_tree, newdata = tree.test.data, type = "prob")
+
+# Probability of positive class
+pred_prob_positive <- pred_prob[, "POSITIVE"]
+
+# ROC curve
+roc_pruned_tree <- roc(
+  response = tree.test.data$flags_recommend_frend,
+  predictor = pred_prob_positive,
+  levels = c("NEGATIVE", "POSITIVE"),
+  direction = "<"
+)
+
+# AUC
+auc_pruned_tree <- auc(roc_pruned_tree)
+auc_pruned_tree
+
+# Plot ROC
+plot(
+  roc_pruned_tree,
+  col = "blue",
+  lwd = 2,
+  main = "ROC Curve - Pruned Decision Tree"
+)
+
+# Add diagonal reference line
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+# Random forest:
+
+# Import packages
+```{r}
+#install.packages("randomForest")
+#install.packages("ggplot2")
+library(randomForest)
+library(caret)
+```
+
+
+# Train the random forest
+```{r}
+# Train Random Forest with 10-fold CV
+set.seed(123)
+
+p <- ncol(tree.train.data) - 1
+
+rf_model <- train(
+  flags_recommend_frend ~ .,
+  data = tree.train.data,
+  method = "rf",
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = expand.grid(mtry = 1:p),
+  ntree = 500,
+  importance = TRUE
+)
+
+# Find the best mtry
+bestTune <- rf_model$bestTune
+bestTune
+
+# Refit the model with the best mtry
+rf_model_tuned <- train(
+  flags_recommend_frend ~ .,
+  data = tree.train.data,
+  method = "rf",
+  trControl = trainControl(
+    method = "cv",
+    number = 10,
+    classProbs = TRUE,
+    summaryFunction = twoClassSummary
+  ),
+  tuneGrid = expand.grid(mtry = bestTune),  # 👈 use your chosen mtry
+  ntree = 500,
+  metric = "ROC",
+  importance = TRUE
+)
+
+# Variable importance plots
+varImpPlot(rf_model_tuned$finalModel, type = 1, main = "Mean Decrease Accuracy (MSE)")  # Mean Decrease Accuracy (MSE)
+varImpPlot(rf_model_tuned$finalModel, type = 2, main = "Mean Decrease Node Impurity")  # Mean Decrease Node Impurity
+
+# Predict on test data
+pred_test <- predict(rf_model_tuned, tree.test.data)
+
+# Confusion matrix and metrics
+cm <- confusionMatrix(
+  pred_test,
+  tree.test.data$flags_recommend_frend
+)
+
+cm
+
+# Metrics
+sensitivity <- cm$byClass["Sensitivity"]
+specificity <- cm$byClass["Specificity"]
+accuracy    <- cm$overall["Accuracy"]
+
+sensitivity
+specificity
+accuracy
+```
+# ROC curve and AUC
+```{r}
+library(pROC)
+# Predict probabilities
+rf_pred_prob <- predict(rf_model_tuned, newdata = tree.test.data, type = "prob")
+
+# Extract probability of POSITIVE class
+rf_pred_prob_pos <- rf_pred_prob[, "POSITIVE"]
+
+# Make Sure Target is Factor
+test.data$flags_recommend_frend <- factor(
+  tree.test.data$flags_recommend_frend,
+  levels = c("NEGATIVE", "POSITIVE")
+)
+
+# Compute ROC Curve
+roc_rf <- roc(
+  response = tree.test.data$flags_recommend_frend,
+  predictor = rf_pred_prob_pos,
+  levels = c("NEGATIVE", "POSITIVE"),
+  direction = "<"
+)
+
+# AUC
+auc_rf <- auc(roc_rf)
+auc_rf
+
+# Plot ROC curve
+plot(
+  roc_rf,
+  col = "blue",
+  lwd = 2,
+  main = "ROC Curve - Random Forest"
+)
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+
