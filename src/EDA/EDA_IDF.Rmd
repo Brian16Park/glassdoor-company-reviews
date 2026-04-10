@@ -59,7 +59,7 @@ df <- df %>%
 
 In the preliminary phase of the Exploratory Data Analysis (EDA), a word cloud was generated to visualize the most prominent terms within the comment dataset. To ensure the visualization reflected meaningful semantic patterns, the initial stopword list was expanded to exclude high-frequency terms that lacked domain-specific informational value.
 
-```{r}
+```{r, message = F, warning = F}
 
 # 1. Define custom stopwords
 # Equivalent to STOPWORDS.union(set([...]))
@@ -105,7 +105,7 @@ for (col in cols) {
 
 
 The above is the data preperation step, mix up TF-IDF, dummy variable and dataset split.
-```{r}
+```{r, message = F, warning = F}
 # Split Data (equivalent to train_test_split)
 set.seed(42)
 df2 = df %>%
