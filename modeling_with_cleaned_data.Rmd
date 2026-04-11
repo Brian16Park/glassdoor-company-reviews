@@ -169,6 +169,402 @@ plot(log_roc_curve)
 
 auc(log_roc_curve)
 ```
+## Function to evaluate each regularized model (Lasso, Ridge, Elastic Net)
+```{r}
+evaluate_model <- function(prob, actual, model_name, thresholds = seq(0.1, 1.0, by = 0.05)) {
+  
+  f1_results <- data.frame(threshold = thresholds, F1 = NA)
+  
+  for (i in seq_along(thresholds)) {
+    t <- thresholds[i]
+    pred_class <- ifelse(prob > t, "POSITIVE", "NEGATIVE")
+    f1_results$F1[i] <- f1_score(actual, pred_class)
+  }
+  
+  best_threshold <- f1_results$threshold[which.max(f1_results$F1)]
+  cat("Best threshold for", model_name, ":", best_threshold, "\n")
+  
+  pred_class <- ifelse(prob > best_threshold, "POSITIVE", "NEGATIVE")
+  pred_class <- as.factor(pred_class)
+  
+  cm <- confusionMatrix(pred_class, actual)
+  print(cm)
+  
+  roc_obj <- roc(actual, prob)
+  plot(roc_obj, main = paste("ROC Curve -", model_name))
+  
+  model_auc <- auc(roc_obj)
+  cat(model_name, "AUC:", model_auc, "\n")
+  
+  list(
+    f1_results = f1_results,
+    best_threshold = best_threshold,
+    pred_class = pred_class,
+    confusion_matrix = cm,
+    roc = roc_obj,
+    auc = model_auc
+  )
+}
+```
+
+
+## Lasso
+```{r}
+x_train <- model.matrix(flags_recommend_frend ~ ., data = train.data)[, -1]
+x_test  <- model.matrix(flags_recommend_frend ~ ., data = test.data)[, -1]
+
+y_train <- ifelse(train.data$flags_recommend_frend == "POSITIVE", 1, 0)
+
+cv_lasso <- cv.glmnet(
+  x_train,
+  y_train,
+  family = "binomial",
+  alpha = 1
+)
+
+lasso_prob <- predict(
+  cv_lasso,
+  newx = x_test,
+  s = "lambda.min",
+  type = "response"
+)
+
+lasso_prob <- as.numeric(lasso_prob)
+
+lasso_eval <- evaluate_model(
+  prob = lasso_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "LASSO"
+)
+```
+
+## Ridge
+```{r}
+set.seed(123)
+cv_ridge <- cv.glmnet(
+  x_train, y_train,
+  family = "binomial",
+  alpha = 0
+)
+
+ridge_prob <- predict(cv_ridge, newx = x_test, s = "lambda.min", type = "response")
+ridge_prob <- as.numeric(ridge_prob)
+
+ridge_eval <- evaluate_model(
+  prob = ridge_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "Ridge"
+)
+```
+
+## Elastic Net
+```{r}
+set.seed(123)
+cv_enet <- cv.glmnet(
+  x_train, y_train,
+  family = "binomial",
+  alpha = 0.5
+)
+
+enet_prob <- predict(cv_enet, newx = x_test, s = "lambda.min", type = "response")
+enet_prob <- as.numeric(enet_prob)
+
+enet_eval <- evaluate_model(
+  prob = enet_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "Elastic Net"
+)
+```
+## Logit again
+```{r}
+set.seed(123)
+
+model_logit <- glm(
+  flags_recommend_frend ~ .,
+  data = train.data,
+  family = binomial
+)
+
+logit_prob <- predict(
+  model_logit,
+  newdata = test.data,
+  type = "response"
+)
+
+logit_eval <- evaluate_model(
+  prob = log_pred_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "Logistic"
+)
+
+```
+
+```{r}
+model_comparison <- data.frame(
+  Model = c("Logistic", "LASSO", "Ridge", "Elastic Net"),
+  Best_Threshold = c(
+    logit_eval$best_threshold,
+    lasso_eval$best_threshold,
+    ridge_eval$best_threshold,
+    enet_eval$best_threshold
+  ),
+  AUC = c(
+    as.numeric(logit_eval$auc),
+    as.numeric(lasso_eval$auc),
+    as.numeric(ridge_eval$auc),
+    as.numeric(enet_eval$auc)
+  ),
+  Accuracy = c(
+    as.numeric(logit_eval$confusion_matrix$overall["Accuracy"]),
+    as.numeric(lasso_eval$confusion_matrix$overall["Accuracy"]),
+    as.numeric(ridge_eval$confusion_matrix$overall["Accuracy"]),
+    as.numeric(enet_eval$confusion_matrix$overall["Accuracy"])
+  ),
+  F1 = c(
+    max(logit_eval$f1_results$F1),
+    max(lasso_eval$f1_results$F1),
+    max(ridge_eval$f1_results$F1),
+    max(enet_eval$f1_results$F1)
+  )
+)
+
+model_comparison
+```
+## Sentiment Add-Ons
+
+Calculate mean and sds across each model's text columns to get the average or compound sentiment
+```{r}
+df$sent_vader_avg <- rowMeans(
+  df[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_vader_sd <- apply(
+  df[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+df$sent_distilbert_avg <- rowMeans(
+  df[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_distilbert_sd <- apply(
+  df[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+df$sent_roberta_avg <- rowMeans(
+  df[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_roberta_sd <- apply(
+  df[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+```
+
+# Just column binding the new compounded sentiment scores to original log_data
+```{r}
+log_data_vader <- cbind(
+  log_data,
+  df[, c(
+    "sent_vader_avg",
+    "sent_vader_sd"
+  )]
+)
+
+log_data_distilbert <- cbind(
+  log_data,
+  df[, c(
+    "sent_distilbert_avg",
+    "sent_distilbert_sd"
+  )]
+)
+
+log_data_roberta <- cbind(
+  log_data,
+  df[, c(
+    "sent_roberta_avg",
+    "sent_roberta_sd"
+  )]
+)
+
+log_data_all <- cbind(
+  log_data,
+  df[, c(
+    "sent_vader_avg",
+    "sent_vader_sd",
+    "sent_distilbert_avg",
+    "sent_distilbert_sd",
+    "sent_roberta_avg",
+    "sent_roberta_sd"
+  )]
+)
+
+datasets <- list(
+  base_only = log_data,
+  vader = log_data_vader,
+  distilbert = log_data_distilbert,
+  roberta = log_data_roberta,
+  base_and_all_sent = log_data_all
+)
+
+
+```
+
+```{r}
+results <- list()
+
+for (name in names(datasets)) {
+  
+  df_current <- datasets[[name]]
+  
+  train_df <- df_current[train_index, ]
+  test_df  <- df_current[-train_index, ]
+  
+  # Logistic
+  model_logit <- glm(
+    flags_recommend_frend ~ .,
+    data = train_df,
+    family = binomial
+  )
+  
+  logit_prob <- predict(model_logit, newdata = test_df, type = "response")
+  
+  logit_eval <- evaluate_model(
+    prob = logit_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("Base Logistic +", name)
+  )
+  
+  # glmnet inputs
+  x_train <- model.matrix(flags_recommend_frend ~ ., data = train_df)[, -1]
+  x_test  <- model.matrix(flags_recommend_frend ~ ., data = test_df)[, -1]
+  y_train <- ifelse(train_df$flags_recommend_frend == "POSITIVE", 1, 0)
+  
+  # LASSO
+  cv_lasso <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 1)
+  lasso_prob <- as.numeric(predict(cv_lasso, newx = x_test, s = "lambda.min", type = "response"))
+  
+  lasso_eval <- evaluate_model(
+    prob = lasso_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("LASSO +", name)
+  )
+  
+  # Ridge
+  cv_ridge <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 0)
+  ridge_prob <- as.numeric(predict(cv_ridge, newx = x_test, s = "lambda.min", type = "response"))
+  
+  ridge_eval <- evaluate_model(
+    prob = ridge_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("Ridge +", name)
+  )
+  
+  # Elastic Net
+  cv_enet <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 0.5)
+  enet_prob <- as.numeric(predict(cv_enet, newx = x_test, s = "lambda.min", type = "response"))
+  
+  enet_eval <- evaluate_model(
+    prob = enet_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("Elastic Net +", name)
+  )
+  
+  # Store results
+  results[[name]] <- list(
+    logit = logit_eval,
+    lasso = lasso_eval,
+    ridge = ridge_eval,
+    enet  = enet_eval
+  )
+}
+
+
+```
+
+```{r}
+model_comparison <- do.call(rbind, lapply(names(results), function(name) {
+  
+  res <- results[[name]]
+  
+  data.frame(
+    Features = name,
+    Model = c("Logistic", "LASSO", "Ridge", "Elastic Net"),
+    
+    AUC = c(
+      as.numeric(res$logit$auc),
+      as.numeric(res$lasso$auc),
+      as.numeric(res$ridge$auc),
+      as.numeric(res$enet$auc)
+    ),
+    
+    F1 = c(
+      max(res$logit$f1_results$F1),
+      max(res$lasso$f1_results$F1),
+      max(res$ridge$f1_results$F1),
+      max(res$enet$f1_results$F1)
+    ),
+    
+    Best_Threshold = c(
+      res$logit$best_threshold,
+      res$lasso$best_threshold,
+      res$ridge$best_threshold,
+      res$enet$best_threshold
+    ),
+    
+    Accuracy = c(
+      as.numeric(res$logit$confusion_matrix$overall["Accuracy"]),
+      as.numeric(res$lasso$confusion_matrix$overall["Accuracy"]),
+      as.numeric(res$ridge$confusion_matrix$overall["Accuracy"]),
+      as.numeric(res$enet$confusion_matrix$overall["Accuracy"])
+    )
+  )
+}))
+
+model_comparison %>% arrange(desc(AUC))
+```
+
+
 # Decision Tree
 
 # Import packages
@@ -367,7 +763,7 @@ rf_model_tuned <- train(
     classProbs = TRUE,
     summaryFunction = twoClassSummary
   ),
-  tuneGrid = expand.grid(mtry = bestTune),  # 👈 use your chosen mtry
+  tuneGrid = expand.grid(mtry = bestTune),  # use your chosen mtry
   ntree = 500,
   metric = "ROC",
   importance = TRUE
