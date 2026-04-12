@@ -28,7 +28,7 @@ library(here)
 ```{r}
 df <- read.csv(here("data/processed/reviews_with_sent_scores.csv"))
 #view(df)
-summary(df)
+#summary(df)
 ```
 # Logistic Regression model:
 # Create a subset for Logistic regression and Convert categorical variables:
@@ -98,7 +98,7 @@ summary(model_logit)
 ```{r}
 # Predict on test data
 log_pred_prob <- predict(model_logit, test.data, type = "response")
-log_pred_prob
+#log_pred_prob
 ```
 
 # Evaluate different classification thresholds to select the best one using F1 scores
@@ -157,7 +157,7 @@ log_pred_class <- as.factor(log_pred_class)
 # Evaluate model performance
 ```{r}
 logistic_cm <- confusionMatrix(log_pred_class, test.data$flags_recommend_frend)
-logistic_cm
+#logistic_cm
 ```
 
 # ROC Curve and AUC
@@ -169,7 +169,7 @@ plot(log_roc_curve)
 
 auc(log_roc_curve)
 ```
-## Function to evaluate each regularized model (Lasso, Ridge, Elastic Net)
+# Function to evaluate each regularized model (Lasso, Ridge, Elastic Net)
 ```{r}
 evaluate_model <- function(prob, actual, model_name, thresholds = seq(0.1, 1.0, by = 0.05)) {
   
@@ -330,9 +330,15 @@ model_comparison <- data.frame(
 
 model_comparison
 ```
-## Sentiment Add-Ons
+Standard Logistic Regression achieves the highest AUC (0.9304), but only marginally above LASSO and Elastic Net, suggesting little gain from regularization in discrimination performance.
 
-Calculate mean and sds across each model's text columns to get the average or compound sentiment
+In terms of classification performance, LASSO stands out with the highest F1 score (0.8205) and accuracy (0.8945), indicating a slightly better balance between precision and recall. Ridge performs the worst across all metrics, with noticeably lower accuracy and F1, suggesting it may be over-smoothing important features.
+
+Overall, the differences are small, but LASSO provides the best trade-off between predictive accuracy and model simplicity, making it the most reliable choice among the base-only models.
+
+# Sentiment Add-Ons
+
+## Calculate mean and sds across each model's text columns to get the average or compound sentiment
 ```{r}
 df$sent_vader_avg <- rowMeans(
   df[, c(
@@ -529,7 +535,7 @@ model_comparison <- do.call(rbind, lapply(names(results), function(name) {
   
   data.frame(
     Features = name,
-    Model = c("Logistic", "LASSO", "Ridge", "Elastic Net"),
+    Model = c("Logistic Regression", "LASSO LogReg", "Ridge LogReg", "Elastic Net LogReg"),
     
     AUC = c(
       as.numeric(res$logit$auc),
@@ -564,6 +570,41 @@ model_comparison <- do.call(rbind, lapply(names(results), function(name) {
 model_comparison %>% arrange(desc(AUC))
 ```
 
+```{r}
+rank_plot_data <- model_comparison %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1))
+  ) %>%
+  select(Model_Label, AUC_Rank, F1_Rank) %>%
+  pivot_longer(
+    cols = c(AUC_Rank, F1_Rank),
+    names_to = "Metric",
+    values_to = "Rank"
+  ) %>%
+  mutate(
+    Metric = recode(Metric,
+      AUC_Rank = "AUC",
+      F1_Rank = "F1"
+    )
+  )
+
+ggplot(rank_plot_data, aes(x = reorder(Model_Label, Rank), y = Rank, color = Metric)) +
+  geom_point(aes(size = Rank == 1)) +
+  coord_flip() +
+  scale_y_reverse() +
+  scale_size_manual(values = c("FALSE" = 2.5, "TRUE" = 4.5), guide = "none") +
+  theme_minimal() +
+  labs(
+    title = "Model Rankings by AUC and F1",
+    x = "Model",
+    y = "Rank (1 = Best)"
+  )
+```
+While Elastic Net and  Logistic with all sentiment features achieved the highest F1 scores, Logistic Regression with VADER features achieved the highest AUC. Since AUC is the primary evaluation metric, it is preferred as it reflects better ranking performance across all thresholds.
+
+The plot reveals a clear trade-off between AUC and F1 across models. Ridge-based models, particularly with DistilBERT features, achieve the highest AUC, indicating strong ranking performance. In contrast, LASSO and Elastic Net models with full sentiment features achieve the highest F1 scores, suggesting better balance between precision and recall. This indicates that while transformer-based sentiment features enhance ranking ability, aggregated sentiment features improve classification performance. No single model dominates across both metrics, highlighting the importance of selecting models based on the evaluation objective.
 
 # Decision Tree
 
@@ -686,7 +727,7 @@ pruned_tree_cm
 library(pROC)
 
 # Make sure outcome levels are ordered correctly
-test.data$flags_recommend_frend <- factor(
+tree.test.data$flags_recommend_frend <- factor(
   tree.test.data$flags_recommend_frend,
   levels = c("NEGATIVE", "POSITIVE")
 )
@@ -789,9 +830,9 @@ sensitivity <- cm$byClass["Sensitivity"]
 specificity <- cm$byClass["Specificity"]
 accuracy    <- cm$overall["Accuracy"]
 
-sensitivity
-specificity
-accuracy
+#sensitivity
+#specificity
+#accuracy
 ```
 # ROC curve and AUC
 ```{r}
@@ -831,3 +872,265 @@ plot(
 abline(a = 0, b = 1, lty = 2, col = "gray")
 ```
 
+# RF Sentiment Add-ons
+```{r}
+tree_datasets <- list(
+  base_only = tree_data,
+  vader = cbind(tree_data, df[, c("sent_vader_avg", "sent_vader_sd")]),
+  distilbert = cbind(tree_data, df[, c("sent_distilbert_avg", "sent_distilbert_sd")]),
+  roberta = cbind(tree_data, df[, c("sent_roberta_avg", "sent_roberta_sd")]),
+  base_and_all_sent = cbind(tree_data, df[, c(
+    "sent_vader_avg", "sent_vader_sd",
+    "sent_distilbert_avg", "sent_distilbert_sd",
+    "sent_roberta_avg", "sent_roberta_sd"
+  )])
+)
+```
+
+# Looping through models and building up result list
+```{r}
+rf_results <- list()
+
+for (name in names(tree_datasets)) {
+  
+  df_current <- tree_datasets[[name]]
+  
+  train_df <- df_current[train_index, ]
+  test_df  <- df_current[-train_index, ]
+  
+  set.seed(123)
+  
+  # Number of predictors for current dataset
+  p <- ncol(train_df) - 1
+  
+  # Step 1: Tune mtry over full grid
+  rf_model <- train(
+    flags_recommend_frend ~ .,
+    data = train_df,
+    method = "rf",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneGrid = expand.grid(mtry = 1:p),
+    ntree = 500,
+    importance = TRUE
+  )
+  
+  # Best mtry for this dataset
+  bestTune <- rf_model$bestTune
+  
+  # Step 2: Refit with best mtry using ROC
+  rf_model_tuned <- train(
+    flags_recommend_frend ~ .,
+    data = train_df,
+    method = "rf",
+    trControl = trainControl(
+      method = "cv",
+      number = 10,
+      classProbs = TRUE,
+      summaryFunction = twoClassSummary
+    ),
+    tuneGrid = bestTune,
+    ntree = 500,
+    metric = "ROC",
+    importance = TRUE
+  )
+  
+  # Optional: variable importance plots
+  # Keep this if you want plots for every dataset; otherwise remove or restrict
+  varImpPlot(
+    rf_model_tuned$finalModel,
+    type = 1,
+    main = paste("Mean Decrease Accuracy - RF +", name)
+  )
+  
+  varImpPlot(
+    rf_model_tuned$finalModel,
+    type = 2,
+    main = paste("Mean Decrease Node Impurity - RF +", name)
+  )
+  
+  # Predict probabilities for POSITIVE class
+  prob <- predict(rf_model_tuned, newdata = test_df, type = "prob")[, "POSITIVE"]
+  
+  # Evaluate
+  eval <- evaluate_model(
+    prob = prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("RF +", name)
+  )
+  
+  # Store everything
+  rf_results[[name]] <- list(
+    best_mtry = bestTune$mtry,
+    rf_model = rf_model,
+    rf_model_tuned = rf_model_tuned,
+    eval = eval
+  )
+}
+```
+
+# RF Model Comparison (Base features vs Sentiment Add-Ons)
+```{r}
+rf_summary <- data.frame(
+  Features = names(rf_results),
+  Model = "Random Forest",
+  Best_mtry = sapply(rf_results, function(x) x$best_mtry),
+  AUC = sapply(rf_results, function(x) as.numeric(x$eval$auc)),
+  F1 = sapply(rf_results, function(x) max(x$eval$f1_results$F1)),
+  Accuracy = sapply(rf_results, function(x) as.numeric(x$eval$confusion_matrix$overall["Accuracy"])),
+  Best_Threshold = sapply(rf_results, function(x) x$eval$best_threshold), row.names = NULL
+)
+
+rf_summary
+```
+Sentiment features do not boost performance as much as they did in Logistic Regression models. The gains in F1 and AUC from VADER and all sentiment features are marginal for an already great performing baseline.
+
+# Ranking every model so far (LogReg + Random Forest)
+
+```{r}
+logistic_df <- model_comparison %>%
+  select(Features, Model, AUC, F1, Accuracy)
+rf_df <- rf_summary %>% select(Features, Model, AUC, F1, Accuracy)
+
+full_summary_df <- bind_rows(logistic_df, rf_df)
+
+full_rank_df <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Accuracy_Rank = dense_rank(desc(Accuracy))
+  )
+full_rank_df
+```
+
+
+```{r}
+rank_plot_data <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1))
+  ) %>%
+  select(Model_Label, AUC_Rank, F1_Rank) %>%
+  pivot_longer(
+    cols = c(AUC_Rank, F1_Rank),
+    names_to = "Metric",
+    values_to = "Rank"
+  ) %>%
+  mutate(
+    Metric = recode(Metric,
+      AUC_Rank = "AUC",
+      F1_Rank = "F1"
+    )
+  )
+
+ggplot(rank_plot_data, aes(x = reorder(Model_Label, Rank), y = Rank, color = Metric)) +
+  geom_point(aes(size = Rank == 1)) +
+  coord_flip() +
+  scale_y_reverse() +
+  scale_size_manual(values = c("FALSE" = 2.5, "TRUE" = 4.5), guide = "none") +
+  theme_minimal() +
+  labs(
+    title = "Model Rankings by AUC and F1",
+    x = "Model",
+    y = "Rank (1 = Best)"
+  )
+```
+
+# Let's get average ranks (using AUC and F1 ranks) and select the best 10 models overall
+```{r}
+full_rank_df <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Avg_Rank = (AUC_Rank + F1_Rank) / 2
+  )
+
+top_models <- full_rank_df %>%
+  slice_min(Avg_Rank, n = 10) %>%
+  arrange(Avg_Rank)
+
+top_models %>% select(Model_Label, AUC_Rank, F1_Rank, Avg_Rank)
+```
+
+
+```{r}
+top_models <- top_models %>%
+  arrange(Avg_Rank) %>%
+  mutate(Model_Label = factor(Model_Label, levels = rev(Model_Label)))
+
+ggplot(top_models, aes(y = Model_Label)) +
+  geom_segment(
+    aes(x = AUC_Rank, xend = F1_Rank, yend = Model_Label),
+    color = "gray70",
+    linewidth = 1
+  ) +
+  geom_point(aes(x = AUC_Rank, color = "AUC"), size = 3) +
+  geom_point(aes(x = F1_Rank, color = "F1"), size = 3) +
+  scale_x_reverse() +
+  theme_minimal() +
+  labs(
+    title = "Top 10 Models: AUC vs F1 Rank (Best to Worst Avg Rank)",
+    x = "Rank (1 = Best)",
+    y = NULL,
+    color = "Metric"
+  )
+```
+To compare the top-performing models, we examine their rankings in both AUC and F1 score, focusing on the ten best models overall. A clear pattern emerges: models that incorporate all sentiment features consistently perform the best. In particular, LASSO and Elastic Net logistic regression achieve the strongest F1 rankings while maintaining solid AUC performance, indicating they strike a good balance between classification accuracy and ranking ability.
+
+In contrast, models using only VADER sentiment tend to rank higher in AUC but lower in F1. This suggests they are better at ordering observations correctly but less effective at making accurate classifications at a fixed threshold. 
+
+Random Forest models fall in between—generally competitive, but they do not surpass the best-performing regularized logistic models.
+
+Overall, the results suggest that combining richer sentiment features with regularization leads to the most reliable performance, especially when both ranking quality (AUC) and classification accuracy (F1) are considered together.
+
+## Filtering models that used non-sentiment base features
+```{r}
+rank_plot_data_base <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Avg_Rank = (AUC_Rank + F1_Rank) / 2
+  ) %>%
+  filter(Features == "base_only")
+
+rank_plot_data_base %>%
+  select(Model_Label, AUC_Rank, F1_Rank, Avg_Rank) %>%
+  arrange(Avg_Rank)
+```
+
+# Plot best models for base features
+```{r}
+base_only_models <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Avg_Rank = (AUC_Rank + F1_Rank) / 2
+  ) %>%
+  filter(Features == "base_only") %>%
+  arrange(Avg_Rank) %>%
+  mutate(Model_Label = factor(Model_Label, levels = rev(Model_Label)))
+
+ggplot(base_only_models, aes(y = Model_Label)) +
+  geom_segment(
+    aes(x = AUC_Rank, xend = F1_Rank, yend = Model_Label),
+    color = "gray70",
+    linewidth = 1
+  ) +
+  geom_point(aes(x = AUC_Rank, color = "AUC"), size = 3) +
+  geom_point(aes(x = F1_Rank, color = "F1"), size = 3) +
+  scale_x_reverse() +
+  theme_minimal() +
+  labs(
+    title = "Base-Only Models: AUC vs F1 Rank (Best to Worst Avg Rank)",
+    x = "Rank (1 = Best)",
+    y = NULL,
+    color = "Metric"
+  )
+```
+Among the base-only models, Random Forest achieves the best overall ranking when evaluated across all models, driven by a strong F1 rank despite a weaker AUC. This suggests that while linear models such as LASSO and Logistic Regression provide slightly better discrimination, Random Forest offers a better balance between precision and recall.
+
+Overall, however, all base-only models rank in the middle compared to sentiment-enhanced models, indicating that incorporating sentiment features provides a meaningful improvement in performance.
