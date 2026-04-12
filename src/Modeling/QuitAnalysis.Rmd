@@ -1,0 +1,121 @@
+---
+title: "Job Quit Factor Analysis"
+author: "Daniel Cheung"
+date: "2026-04-12"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Main conclusion: Covid is the most significant protector from quitting the job; missing of career opportunity is the most significant factor leading to job quitting; leadership could negatively affect the willing to stay, but after working 3 years at a company, staffs are more rational, and less sensitive to ratings.
+
+# Job Quit Factor Analysis
+
+
+```{r, message = F, warning = F}
+if (!requireNamespace("pacman", quietly = TRUE)) {
+  install.packages("pacman")
+}
+library(pacman)
+
+p_load(here)
+p_load(tidyverse)
+p_load(caret)
+
+p_load(car) # VIF
+
+
+p_load(survival) # Cox
+p_load(survminer) # Plot
+
+p_load(randomForestSRC)
+
+data <- read.csv(here("data", "processed", "reviews_with_sent_scores.csv"))
+
+```
+
+
+
+```{r}
+features_base <- c(
+  # Ratings
+  # "rating_culture_values",
+  "rating_work_life",
+  "rating_career_opportunities",
+  "rating_compensation_benefits",
+  "rating_senior_leadership",
+  "rating_diversity_inclusion",
+  
+  # Context
+  "covid_related_review",
+  
+  # Missingness
+  "career_missing"
+
+)
+
+
+```
+
+
+## Cox Model
+
+```{r}
+surv_obj <- Surv(time = data$employee_length, event = data$employee_job_quit)
+plot(survfit(surv_obj ~ 1), main = "Job Retention Ratio by Employee Length", ylim = c(0,1))
+
+```
+
+This plot illustrates how likely employees are to stay in their position. For this dataset, more than half of the employees are likely to quit their job within 3 years, and the porportion of long-term staff is less than 10%.
+
+### Model 1: whole dataset
+```{r}
+coxmodel1 <- coxph(surv_obj ~ ., data[,features_base])
+summary(coxmodel1)
+
+ggforest(coxmodel1, data = data, main = "Hazard Ratio")
+
+```
+
+The Cox Model is built to find factors employees quit the job. The Concordance index is 0.592, thus the model is not bad.
+
+The career_missing are the most significant factor shown in the model, indicating when employee doesn't rate their career opportunity are more likely to quit the job.
+
+Note: ```rating_culture_values``` is dropped since high correlation with ```rating_senior_leadership```, which made VIF > 3. After dropping ```rating_culture_values```, the C-Index wasn't decreased too much. 
+
+Covid is a protector of employee leaving, during the covid period people are less likely to quit their job.
+
+
+<!-- Senior leadership and the that people may have higher expection of their boss and  -->
+### Model 2: subset with year < 3
+
+```{r}
+data2 <- data[data$employee_length<3,]
+surv_obj2 <- Surv(time = data2$employee_length, event = data2$employee_job_quit)
+
+coxmodel2 <- coxph(surv_obj2 ~ ., data2[, features_base])
+summary(coxmodel2)
+
+ggforest(coxmodel2, data = data2, main = "Hazard Ratio for Employee Length < 3yr")
+
+```
+
+### Model 3: subset with year 3~5
+
+```{r}
+data3 <- data[(data$employee_length<5) & (data$employee_length>=3),]
+surv_obj3 <- Surv(time = data3$employee_length, event = data3$employee_job_quit)
+
+coxmodel3 <- coxph(surv_obj3 ~ ., data3[, features_base])
+summary(coxmodel3)
+
+ggforest(coxmodel3, data = data3, main = "Hazard Ratio for Employee Length 3 ~ 5yr")
+
+```
+
+
+The initial observation that higher leadership ratings act as a risk factor is a paradox that dissolves when examining mid-tenure staff. During the 3–5 year window, the influence of leadership quality completely neutralizes (HR = 1.01, p=0.81). This suggests a clear maturation effect among employees. By their third year, staff have matured past the stage where subjective leadership styles dictate their retention.
+
+Instead, the model is entirely dominated by the absence of career opportunities (Career Missing, HR=1.35). This demonstrates that for experienced professionals, attrition is no longer about dissatisfaction with management, but rather a pragmatic response to a stagnant career trajectory. If the company fails to provide clear promotion pathways within this 3–5 year window, even the most highly-rated leaders cannot prevent turnover.
+
+
