@@ -1,0 +1,564 @@
+---
+title: "tf-idf-model"
+author: "Mahin Roddur"
+date: "2026-04-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!requireNamespace("pacman", quietly = TRUE)) {
+  install.packages("pacman")
+}
+library(pacman)
+
+p_load(
+  here,
+  tidyverse,
+  tidytext,
+  caret,
+  glmnet,
+  Matrix,
+  stringr
+)
+```
+
+```{r}
+# ---------------------------------------------------------
+# 1. LOAD DATA
+# ---------------------------------------------------------
+
+df <- read.csv(here("data/processed/reviews_with_sent_scores.csv"))
+```
+
+```{r}
+# ---------------------------------------------------------
+# 2. CREATE AGGREGATED SENTIMENT FEATURES
+# ---------------------------------------------------------
+
+df$sent_vader_avg <- rowMeans(
+  df[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_vader_sd <- apply(
+  df[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+df$sent_distilbert_avg <- rowMeans(
+  df[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_distilbert_sd <- apply(
+  df[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+df$sent_roberta_avg <- rowMeans(
+  df[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_roberta_sd <- apply(
+  df[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+sent_features <- c(
+  "sent_vader_avg",
+  "sent_vader_sd",
+  "sent_distilbert_avg",
+  "sent_distilbert_sd",
+  "sent_roberta_avg",
+  "sent_roberta_sd"
+)
+```
+
+```{r}
+# ---------------------------------------------------------
+# 3. GLOBAL DATA PREP
+# ---------------------------------------------------------
+
+df <- df %>%
+  mutate(
+    across(c(summary, advice_to_management, review_pros, review_cons), ~ replace_na(., "")),
+    text_all = paste(summary, review_pros, review_cons, advice_to_management, sep = " "),
+    
+    rating_group = case_when(
+      rating_overall <= 2 ~ "Low",
+      rating_overall == 3 ~ "Mid",
+      rating_overall >= 4 ~ "High",
+      TRUE ~ NA_character_
+    ),
+    
+    rating_group = factor(rating_group, levels = c("Low", "Mid", "High")),
+    
+    employee_job_quit = as.factor(employee_job_quit),
+    sector = as.factor(sector),
+    covid_related_review = as.factor(covid_related_review),
+    career_missing = as.factor(career_missing),
+    flags_business_outlook = as.factor(flags_business_outlook),
+    flags_ceo_approval = as.factor(flags_ceo_approval)
+  )
+```
+
+```{r}
+# ---------------------------------------------------------
+# 4. FEATURE SETS
+# ---------------------------------------------------------
+
+num_features_base <- c(
+  "rating_culture_values",
+  "rating_work_life",
+  "rating_compensation_benefits",
+  "rating_senior_leadership",
+  "rating_career_opportunities",
+  "rating_diversity_inclusion",
+  "flags_business_outlook",
+  "flags_ceo_approval",
+  "employee_length",
+  "employee_job_quit",
+  "sector",
+  "covid_related_review",
+  "career_missing"
+)
+
+num_features_plus_sent <- c(num_features_base, sent_features)
+```
+
+```{r}
+# ---------------------------------------------------------
+# 5. SHARED HELPERS
+# ---------------------------------------------------------
+
+evaluate_multiclass <- function(pred_class, actual) {
+  pred_class <- factor(pred_class, levels = levels(actual))
+  cm <- caret::confusionMatrix(pred_class, actual)
+  
+  list(
+    accuracy = as.numeric(cm$overall["Accuracy"]),
+    kappa = as.numeric(cm$overall["Kappa"]),
+    confusion_matrix = cm
+  )
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 6. BUILD TF-IDF MATRICES
+#    mode = unigram / bigram / both
+# ---------------------------------------------------------
+
+build_tfidf_matrix <- function(data, mode = c("unigram", "bigram", "both"), top_n = 2000, vocab = NULL) {
+  mode <- match.arg(mode)
+  
+  df_id <- data %>%
+    mutate(doc_id = row_number()) %>%
+    select(doc_id, text_all)
+  
+  uni_tbl <- df_id %>%
+    unnest_tokens(term, text_all, token = "words") %>%
+    filter(str_detect(term, "^[a-z]+$")) %>%
+    anti_join(stop_words, by = c("term" = "word"))
+  
+  bi_tbl <- df_id %>%
+    unnest_tokens(term, text_all, token = "ngrams", n = 2) %>%
+    separate(term, into = c("w1", "w2"), sep = " ", remove = FALSE) %>%
+    filter(str_detect(w1, "^[a-z]+$"), str_detect(w2, "^[a-z]+$")) %>%
+    filter(!w1 %in% stop_words$word, !w2 %in% stop_words$word) %>%
+    transmute(doc_id, term = paste(w1, w2, sep = "_"))
+  
+  tokens <- switch(
+    mode,
+    unigram = uni_tbl,
+    bigram = bi_tbl,
+    both = bind_rows(uni_tbl, bi_tbl)
+  )
+  
+  if (is.null(vocab)) {
+    vocab <- tokens %>%
+      count(term, sort = TRUE) %>%
+      slice_head(n = top_n) %>%
+      pull(term)
+  }
+  
+  tokens <- tokens %>%
+    filter(term %in% vocab)
+  
+  tfidf_tbl <- tokens %>%
+    count(doc_id, term, sort = FALSE) %>%
+    bind_tf_idf(term, doc_id, n)
+  
+  term_index <- setNames(seq_along(vocab), vocab)
+  
+  if (nrow(tfidf_tbl) == 0) {
+    sparse_mat <- Matrix::sparseMatrix(
+      i = integer(0),
+      j = integer(0),
+      dims = c(nrow(df_id), length(vocab)),
+      dimnames = list(as.character(df_id$doc_id), vocab)
+    )
+  } else {
+    sparse_mat <- Matrix::sparseMatrix(
+      i = tfidf_tbl$doc_id,
+      j = term_index[tfidf_tbl$term],
+      x = tfidf_tbl$tf_idf,
+      dims = c(nrow(df_id), length(vocab)),
+      dimnames = list(as.character(df_id$doc_id), vocab)
+    )
+  }
+  
+  list(
+    x = sparse_mat,
+    vocab = vocab
+  )
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 7. NUMERICAL DESIGN MATRIX BUILDER
+# ---------------------------------------------------------
+
+build_numeric_matrix <- function(data, feature_cols) {
+  formula_x <- as.formula(
+    paste("~", paste(feature_cols, collapse = " + "))
+  )
+  
+  mm <- model.matrix(formula_x, data = data)[, -1, drop = FALSE]
+  Matrix::Matrix(mm, sparse = TRUE)
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 8. APPEND SENTIMENT TO SPARSE MATRIX
+# ---------------------------------------------------------
+
+append_sentiment_matrix <- function(x_sparse, data, sent_cols) {
+  sent_df <- data %>%
+    select(all_of(sent_cols)) %>%
+    mutate(across(everything(), ~ replace_na(., 0)))
+  
+  sent_mat <- as.matrix(sent_df)
+  sent_mat <- Matrix::Matrix(sent_mat, sparse = TRUE)
+  
+  cbind(x_sparse, sent_mat)
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 9. TF-IDF CLASSIFICATION PIPELINE
+#    target = rating_group
+# ---------------------------------------------------------
+
+run_tfidf_classification <- function(df, mode = c("unigram", "bigram", "both"),
+                                     add_sentiment = FALSE,
+                                     sent_cols = sent_features,
+                                     seed = 123,
+                                     top_n = 2000,
+                                     alpha = 1) {
+  mode <- match.arg(mode)
+  
+  keep_cols <- c("rating_group", "text_all")
+  if (add_sentiment) keep_cols <- c(keep_cols, sent_cols)
+  
+  df_model <- df %>%
+    select(all_of(keep_cols)) %>%
+    filter(!is.na(rating_group))
+  
+  set.seed(seed)
+  idx <- createDataPartition(df_model$rating_group, p = 0.8, list = FALSE)
+  
+  train_df <- df_model[idx, ]
+  test_df  <- df_model[-idx, ]
+  
+  train_tfidf <- build_tfidf_matrix(train_df, mode = mode, top_n = top_n)
+  test_tfidf  <- build_tfidf_matrix(test_df, mode = mode, vocab = train_tfidf$vocab)
+  
+  x_train <- train_tfidf$x
+  x_test  <- test_tfidf$x
+  
+  if (add_sentiment) {
+    x_train <- append_sentiment_matrix(x_train, train_df, sent_cols)
+    x_test  <- append_sentiment_matrix(x_test, test_df, sent_cols)
+  }
+  
+  y_train <- train_df$rating_group
+  y_test  <- test_df$rating_group
+  
+  lambda_grid <- 10^seq(1, -2, length = 100)
+  
+  set.seed(seed)
+  cv_fit <- cv.glmnet(
+    x_train, y_train,
+    family = "multinomial",
+    alpha = alpha,
+    lambda = lambda_grid
+  )
+  
+  pred_class <- predict(cv_fit, newx = x_test, s = "lambda.min", type = "class")
+  pred_class <- as.vector(pred_class)
+  pred_class <- factor(pred_class, levels = levels(y_test))
+  
+  eval <- evaluate_multiclass(pred_class, y_test)
+  
+  list(
+    model = cv_fit,
+    accuracy = eval$accuracy,
+    kappa = eval$kappa,
+    confusion_matrix = eval$confusion_matrix
+  )
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 10. NUMERICAL CLASSIFICATION PIPELINE
+#     target = rating_group
+# ---------------------------------------------------------
+
+run_numeric_classification <- function(df, feature_cols, seed = 123, alpha = 1) {
+  df_model <- df %>%
+    select(rating_group, all_of(feature_cols)) %>%
+    filter(!is.na(rating_group)) %>%
+    na.omit()
+  
+  set.seed(seed)
+  idx <- createDataPartition(df_model$rating_group, p = 0.8, list = FALSE)
+  
+  train_df <- df_model[idx, ]
+  test_df  <- df_model[-idx, ]
+  
+  x_train <- build_numeric_matrix(train_df, feature_cols)
+  x_test  <- build_numeric_matrix(test_df, feature_cols)
+  
+  common_cols <- intersect(colnames(x_train), colnames(x_test))
+  x_train <- x_train[, common_cols, drop = FALSE]
+  x_test  <- x_test[, common_cols, drop = FALSE]
+  
+  y_train <- train_df$rating_group
+  y_test  <- test_df$rating_group
+  
+  lambda_grid <- 10^seq(1, -2, length = 100)
+  
+  set.seed(seed)
+  cv_fit <- cv.glmnet(
+    x_train, y_train,
+    family = "multinomial",
+    alpha = alpha,
+    lambda = lambda_grid
+  )
+  
+  pred_class <- predict(cv_fit, newx = x_test, s = "lambda.min", type = "class")
+  pred_class <- as.vector(pred_class)
+  pred_class <- factor(pred_class, levels = levels(y_test))
+  
+  eval <- evaluate_multiclass(pred_class, y_test)
+  
+  list(
+    model = cv_fit,
+    accuracy = eval$accuracy,
+    kappa = eval$kappa,
+    confusion_matrix = eval$confusion_matrix
+  )
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 11. TF-IDF + NUMERICAL + SENTIMENT (FULL MODEL)
+#    target = rating_group
+# ---------------------------------------------------------
+
+run_full_classification <- function(df,
+                                    mode = c("unigram", "bigram", "both"),
+                                    num_features,
+                                    sent_features,
+                                    seed = 123,
+                                    top_n = 2000,
+                                    alpha = 0.5) {
+  mode <- match.arg(mode)
+  
+  df_model <- df %>%
+    select(
+      rating_group,
+      text_all,
+      all_of(num_features),
+      all_of(sent_features)
+    ) %>%
+    filter(!is.na(rating_group)) %>%
+    na.omit()
+  
+  set.seed(seed)
+  idx <- createDataPartition(df_model$rating_group, p = 0.8, list = FALSE)
+  
+  train_df <- df_model[idx, ]
+  test_df  <- df_model[-idx, ]
+  
+  train_tfidf <- build_tfidf_matrix(train_df, mode = mode, top_n = top_n)
+  test_tfidf  <- build_tfidf_matrix(test_df, mode = mode, vocab = train_tfidf$vocab)
+  
+  x_train_text <- train_tfidf$x
+  x_test_text  <- test_tfidf$x
+  
+  x_train_num <- build_numeric_matrix(train_df, num_features)
+  x_test_num  <- build_numeric_matrix(test_df, num_features)
+  
+  common_cols_num <- intersect(colnames(x_train_num), colnames(x_test_num))
+  x_train_num <- x_train_num[, common_cols_num, drop = FALSE]
+  x_test_num  <- x_test_num[, common_cols_num, drop = FALSE]
+  
+  x_train_sent <- train_df %>%
+    select(all_of(sent_features)) %>%
+    mutate(across(everything(), ~ replace_na(., 0))) %>%
+    as.matrix() %>%
+    Matrix::Matrix(sparse = TRUE)
+  
+  x_test_sent <- test_df %>%
+    select(all_of(sent_features)) %>%
+    mutate(across(everything(), ~ replace_na(., 0))) %>%
+    as.matrix() %>%
+    Matrix::Matrix(sparse = TRUE)
+  
+  x_train <- cbind(x_train_text, x_train_num, x_train_sent)
+  x_test  <- cbind(x_test_text, x_test_num, x_test_sent)
+  
+  y_train <- train_df$rating_group
+  y_test  <- test_df$rating_group
+  
+  lambda_grid <- 10^seq(1, -2, length = 100)
+  
+  set.seed(seed)
+  cv_fit <- cv.glmnet(
+    x_train, y_train,
+    family = "multinomial",
+    alpha = alpha,
+    lambda = lambda_grid
+  )
+  
+  pred_class <- predict(cv_fit, newx = x_test, s = "lambda.min", type = "class")
+  pred_class <- as.vector(pred_class)
+  pred_class <- factor(pred_class, levels = levels(y_test))
+  
+  eval <- evaluate_multiclass(pred_class, y_test)
+  
+  list(
+    model = cv_fit,
+    accuracy = eval$accuracy,
+    kappa = eval$kappa,
+    confusion_matrix = eval$confusion_matrix
+  )
+}
+```
+
+```{r}
+# ---------------------------------------------------------
+# 12. RUN ALL CLASSIFICATION MODELS
+# ---------------------------------------------------------
+
+clf_tfidf_uni <- run_tfidf_classification(df, mode = "unigram", add_sentiment = FALSE, alpha = 1)
+clf_tfidf_bi <- run_tfidf_classification(df, mode = "bigram", add_sentiment = FALSE, alpha = 0.5)
+clf_tfidf_both <- run_tfidf_classification(df, mode = "both", add_sentiment = FALSE, alpha = 0.5)
+clf_tfidf_sent <- run_tfidf_classification(df, mode = "both", add_sentiment = TRUE, sent_cols = sent_features, alpha = 0.5)
+
+clf_num <- run_numeric_classification(df, num_features_base, alpha = 1)
+clf_num_sent <- run_numeric_classification(df, num_features_plus_sent, alpha = 1)
+
+clf_full <- run_full_classification(
+  df,
+  mode = "both",
+  num_features = num_features_base,
+  sent_features = sent_features,
+  alpha = 0.5
+)
+```
+
+```{r}
+# ---------------------------------------------------------
+# 13. FINAL CLASSIFICATION COMPARISON TABLE
+# ---------------------------------------------------------
+
+classification_comparison <- data.frame(
+  Model = c(
+    "TF-IDF Unigrams",
+    "TF-IDF Bigrams",
+    "TF-IDF Unigrams + Bigrams",
+    "TF-IDF Unigrams + Bigrams + Sentiment",
+    "Numerical Features",
+    "Numerical Features + Sentiment",
+    "TF-IDF + Numerical + Sentiment"
+  ),
+  Accuracy = c(
+    clf_tfidf_uni$accuracy,
+    clf_tfidf_bi$accuracy,
+    clf_tfidf_both$accuracy,
+    clf_tfidf_sent$accuracy,
+    clf_num$accuracy,
+    clf_num_sent$accuracy,
+    clf_full$accuracy
+  ),
+  Kappa = c(
+    clf_tfidf_uni$kappa,
+    clf_tfidf_bi$kappa,
+    clf_tfidf_both$kappa,
+    clf_tfidf_sent$kappa,
+    clf_num$kappa,
+    clf_num_sent$kappa,
+    clf_full$kappa
+  )
+) %>%
+  arrange(desc(Accuracy))
+
+classification_comparison
+```
+
+```{r}
+# ---------------------------------------------------------
+# 14. OPTIONAL: VIEW CONFUSION MATRICES
+# ---------------------------------------------------------
+
+clf_tfidf_sent$confusion_matrix
+clf_num_sent$confusion_matrix
+clf_full$confusion_matrix
+```

@@ -1,0 +1,267 @@
+---
+title: "tf-idf-rating"
+author: "Mahin Roddur"
+date: "2026-04-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!requireNamespace("pacman", quietly = TRUE)) {
+  install.packages("pacman")
+}
+library(pacman)
+
+p_load(
+  here,
+  caret,
+  tidyverse,
+  tidymodels,
+  tidytext,
+  textrecipes,
+  Matrix,
+  wordcloud,
+  tm,
+  stopwords,
+  RColorBrewer,
+  glmnet,
+  pROC,
+  stringr
+)
+```
+
+```{r}
+df <- read.csv(here("data/processed/reviews_with_sent_scores.csv")) %>%
+  mutate(
+    across(c(summary, advice_to_management, review_pros, review_cons), ~ replace_na(., "")),
+    text_all = paste(summary, review_pros, review_cons, advice_to_management, sep = " "),
+    rating_group = case_when(
+      rating_overall <= 2 ~ "Low",
+      rating_overall == 3 ~ "Mid",
+      rating_overall >= 4 ~ "High"
+    )
+  )
+
+df_low_high <- df %>%
+  filter(rating_group %in% c("Low", "High"))
+```
+
+```{r}
+custom_stopwords <- c(
+  stopwords("english"),
+  "bad", "good", "great", "will", "company",
+  "job", "work", "employee", "employees", "people", "here"
+)
+```
+
+```{r}
+plotWordCloudFromDF <- function(data, column_name) {
+  text_data <- paste(data[[column_name]], collapse = " ")
+  
+  docs <- Corpus(VectorSource(text_data)) %>%
+    tm_map(content_transformer(tolower)) %>%
+    tm_map(removePunctuation) %>%
+    tm_map(removeNumbers) %>%
+    tm_map(removeWords, custom_stopwords) %>%
+    tm_map(stripWhitespace)
+  
+  wordcloud(
+    words = docs,
+    max.words = 300,
+    random.order = FALSE,
+    rot.per = 0.35,
+    colors = brewer.pal(8, "Dark2"),
+    scale = c(3, 0.5)
+  )
+}
+
+text_cols <- c("summary", "advice_to_management", "review_pros", "review_cons", "text_all")
+
+for (col in text_cols) {
+  plotWordCloudFromDF(df, col)
+}
+```
+
+```{r}
+clean_unigrams_by_group <- function(data, text_col, group_col = "rating_group", top_n = 15) {
+  data %>%
+    select(all_of(c(text_col, group_col))) %>%
+    unnest_tokens(word, !!sym(text_col)) %>%
+    filter(str_detect(word, "^[a-z]+$")) %>%
+    filter(!word %in% custom_stopwords) %>%
+    count(.data[[group_col]], word, sort = TRUE) %>%
+    group_by(.data[[group_col]]) %>%
+    slice_max(n, n = top_n) %>%
+    ungroup()
+}
+
+freq_unigram_by_rating <- clean_unigrams_by_group(df, "text_all")
+
+ggplot(freq_unigram_by_rating,
+       aes(x = reorder_within(word, n, rating_group), y = n, fill = rating_group)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~rating_group, scales = "free_y") +
+  scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Unigrams by rating_overall Group",
+    x = "Term",
+    y = "Frequency"
+  )
+```
+
+```{r}
+clean_bigrams_by_group <- function(data, text_col, group_col = "rating_group", top_n = 15) {
+  data %>%
+    select(all_of(c(text_col, group_col))) %>%
+    unnest_tokens(bigram, !!sym(text_col), token = "ngrams", n = 2) %>%
+    separate(bigram, into = c("word1", "word2"), sep = " ") %>%
+    filter(str_detect(word1, "^[a-z]+$")) %>%
+    filter(str_detect(word2, "^[a-z]+$")) %>%
+    filter(!word1 %in% custom_stopwords) %>%
+    filter(!word2 %in% custom_stopwords) %>%
+    unite(bigram, word1, word2, sep = " ") %>%
+    count(.data[[group_col]], bigram, sort = TRUE) %>%
+    group_by(.data[[group_col]]) %>%
+    slice_max(n, n = top_n) %>%
+    ungroup()
+}
+
+freq_bigram_by_rating <- clean_bigrams_by_group(df, "text_all")
+
+ggplot(freq_bigram_by_rating,
+       aes(x = reorder_within(bigram, n, rating_group), y = n, fill = rating_group)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~rating_group, scales = "free_y") +
+  scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Bigrams by rating_overall Group",
+    x = "Bigram",
+    y = "Frequency"
+  )
+```
+
+```{r}
+tfidf_unigram_by_rating <- df %>%
+  select(rating_group, text_all) %>%
+  unnest_tokens(word, text_all) %>%
+  filter(str_detect(word, "^[a-z]+$")) %>%
+  filter(!word %in% custom_stopwords) %>%
+  count(rating_group, word, sort = TRUE) %>%
+  bind_tf_idf(word, rating_group, n) %>%
+  group_by(rating_group) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup()
+
+ggplot(tfidf_unigram_by_rating,
+       aes(x = reorder_within(word, tf_idf, rating_group),
+           y = tf_idf,
+           fill = rating_group)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~rating_group, scales = "free_y") +
+  scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Unigram TF-IDF Terms by rating_overall Group",
+    x = "Term",
+    y = "TF-IDF"
+  )
+```
+
+```{r}
+tfidf_bigram_by_rating <- df %>%
+  select(rating_group, text_all) %>%
+  unnest_tokens(bigram, text_all, token = "ngrams", n = 2) %>%
+  separate(bigram, into = c("word1", "word2"), sep = " ") %>%
+  filter(str_detect(word1, "^[a-z]+$")) %>%
+  filter(str_detect(word2, "^[a-z]+$")) %>%
+  filter(!word1 %in% custom_stopwords) %>%
+  filter(!word2 %in% custom_stopwords) %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  count(rating_group, bigram, sort = TRUE) %>%
+  bind_tf_idf(bigram, rating_group, n) %>%
+  group_by(rating_group) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup()
+
+ggplot(tfidf_bigram_by_rating,
+       aes(x = reorder_within(bigram, tf_idf, rating_group),
+           y = tf_idf,
+           fill = rating_group)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~rating_group, scales = "free_y") +
+  scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Bigram TF-IDF Terms by rating_overall Group",
+    x = "Bigram",
+    y = "TF-IDF"
+  )
+```
+
+```{r}
+tfidf_unigram_by_score <- df %>%
+  mutate(rating_overall = as.factor(rating_overall)) %>%
+  select(rating_overall, text_all) %>%
+  unnest_tokens(word, text_all) %>%
+  filter(str_detect(word, "^[a-z]+$")) %>%
+  filter(!word %in% custom_stopwords) %>%
+  count(rating_overall, word, sort = TRUE) %>%
+  bind_tf_idf(word, rating_overall, n) %>%
+  group_by(rating_overall) %>%
+  slice_max(tf_idf, n = 12) %>%
+  ungroup()
+
+ggplot(tfidf_unigram_by_score,
+       aes(x = reorder_within(word, tf_idf, rating_overall),
+           y = tf_idf,
+           fill = rating_overall)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~rating_overall, scales = "free_y") +
+  scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Unigram TF-IDF Terms by rating_overall",
+    x = "Term",
+    y = "TF-IDF"
+  )
+```
+
+```{r}
+tfidf_bigram_low_high <- df_low_high %>%
+  select(rating_group, text_all) %>%
+  unnest_tokens(bigram, text_all, token = "ngrams", n = 2) %>%
+  separate(bigram, into = c("word1", "word2"), sep = " ") %>%
+  filter(str_detect(word1, "^[a-z]+$")) %>%
+  filter(str_detect(word2, "^[a-z]+$")) %>%
+  filter(!word1 %in% custom_stopwords) %>%
+  filter(!word2 %in% custom_stopwords) %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  count(rating_group, bigram, sort = TRUE) %>%
+  bind_tf_idf(bigram, rating_group, n) %>%
+  group_by(rating_group) %>%
+  slice_max(tf_idf, n = 20) %>%
+  ungroup()
+
+ggplot(tfidf_bigram_low_high,
+       aes(x = reorder_within(bigram, tf_idf, rating_group),
+           y = tf_idf,
+           fill = rating_group)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~rating_group, scales = "free_y") +
+  scale_x_reordered() +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Top Bigram TF-IDF Terms: Low vs High Ratings",
+    x = "Bigram",
+    y = "TF-IDF"
+  )
+```
