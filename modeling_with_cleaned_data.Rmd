@@ -647,7 +647,8 @@ tree_data <- df %>%
     employee_job_quit, 
     sector, 
     covid_related_review, 
-    career_missing
+    career_missing,
+    summary_wc, pros_wc, cons_wc, advice_wc, helpfulness_score
   )
 
 # Recode recommendation / outlook / CEO approval into numeric variables
@@ -844,7 +845,7 @@ rf_pred_prob <- predict(rf_model_tuned, newdata = tree.test.data, type = "prob")
 rf_pred_prob_pos <- rf_pred_prob[, "POSITIVE"]
 
 # Make Sure Target is Factor
-test.data$flags_recommend_frend <- factor(
+tree.test.data$flags_recommend_frend <- factor(
   tree.test.data$flags_recommend_frend,
   levels = c("NEGATIVE", "POSITIVE")
 )
