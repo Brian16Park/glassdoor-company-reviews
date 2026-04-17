@@ -1,0 +1,1136 @@
+---
+title: "modeling_with_cleaned_data"
+author: "Quynh Tran"
+date: "2026-04-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import packages
+```{r}
+library(MASS)
+library(tidyverse)
+#install.packages("lattice")
+library(lattice)
+library(caret)
+#install.packages("Matrix")
+library(Matrix)
+library(glmnet)
+library(mlbench)
+library(caret)
+library(here)
+```
+
+# Import dataset
+```{r}
+df <- read.csv(here("data/processed/reviews_with_sent_scores.csv"))
+#view(df)
+#summary(df)
+```
+# Logistic Regression model:
+# Create a subset for Logistic regression and Convert categorical variables:
+```{r}
+log_data <- df %>% 
+  select( 
+    flags_recommend_frend, 
+    rating_culture_values, 
+    rating_work_life, 
+    rating_compensation_benefits, 
+    rating_senior_leadership, 
+    rating_career_opportunities, 
+    rating_diversity_inclusion, 
+    flags_business_outlook, 
+    flags_ceo_approval,
+    employee_length, 
+    employee_job_quit, 
+    sector, 
+    covid_related_review, 
+    career_missing
+  )
+
+# Recode recommendation / outlook / CEO approval into numeric variables
+log_data <- log_data %>%
+  dplyr::mutate(
+    employee_job_quit = as.integer(employee_job_quit),
+    career_missing = as.integer(career_missing),
+    flags_recommend_frend = as.factor(flags_recommend_frend),
+    sector = as.integer(as.factor(sector)),
+    flags_business_outlook = as.integer(as.factor(flags_business_outlook)),
+    flags_ceo_approval = as.integer(as.factor(flags_ceo_approval))
+  )
+```
+
+
+# Split the data into training-testing
+```{r}
+library(caret)
+
+set.seed(123)
+
+train_index <- createDataPartition(
+  log_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+train.data <- log_data[train_index, ]
+test.data <- log_data[-train_index, ]
+
+# Check class imbalance after splitting
+prop.table(table(train.data$flags_recommend_frend))
+prop.table(table(test.data$flags_recommend_frend))
+```
+```{r}
+# Fit the model
+set.seed(123)
+model_logit <- glm(
+  flags_recommend_frend ~.,
+  data = train.data,
+  family = binomial
+)
+
+summary(model_logit)
+```
+
+```{r}
+# Predict on test data
+log_pred_prob <- predict(model_logit, test.data, type = "response")
+#log_pred_prob
+```
+
+# Evaluate different classification thresholds to select the best one using F1 scores
+# F1 = 2 * (precision * recall) / (precision + recall)
+```{r}
+# Step 5.1: Create a Sequence of Thresholds
+thresholds <- seq(0.1, 1.0, by = 0.1)
+
+# Step 5.2: Define a function to calculate F1 score
+f1_score <- function(actual, predicted) {
+
+  tp <- sum(actual == "POSITIVE" & predicted == "POSITIVE")
+  fp <- sum(actual == "NEGATIVE" & predicted == "POSITIVE")
+  fn <- sum(actual == "POSITIVE" & predicted == "NEGATIVE")
+
+  precision <- ifelse((tp + fp) == 0, 0, tp / (tp + fp))
+  recall <- ifelse((tp + fn) == 0, 0, tp / (tp + fn))
+
+  if (precision + recall == 0) return(0)
+
+  f1 <- 2 * precision * recall / (precision + recall)
+
+  return(f1)
+}
+
+# Step 5.3: Loop Through Thresholds
+f1_results <- data.frame(threshold = thresholds, F1 = NA)
+
+for (i in seq_along(thresholds)) {
+  
+  t <- thresholds[i]
+  
+  pred_class <- ifelse(log_pred_prob > t, "POSITIVE", "NEGATIVE")
+  
+  f1_results$F1[i] <- f1_score(test.data$flags_recommend_frend, pred_class)
+}
+
+# Step 5.4: Print F1 scores
+print(f1_results)
+
+# Step 5.5: Choose the threshold with the best F1 score
+best_threshold <- f1_results$threshold[which.max(f1_results$F1)]
+best_f1 <- max(f1_results$F1)
+
+best_threshold
+best_f1
+```
+# Convert Probabilities to Class Predictions using threshold of 0.4
+```{r}
+log_pred_class <- ifelse(log_pred_prob > 0.4,"POSITIVE", "NEGATIVE")
+
+# Convert to factor
+log_pred_class <- as.factor(log_pred_class)
+```
+
+# Evaluate model performance
+```{r}
+logistic_cm <- confusionMatrix(log_pred_class, test.data$flags_recommend_frend)
+#logistic_cm
+```
+
+# ROC Curve and AUC
+```{r}
+library(pROC)
+
+log_roc_curve <- roc(test.data$flags_recommend_frend, log_pred_prob)
+plot(log_roc_curve)
+
+auc(log_roc_curve)
+```
+# Function to evaluate each regularized model (Lasso, Ridge, Elastic Net)
+```{r}
+evaluate_model <- function(prob, actual, model_name, thresholds = seq(0.1, 1.0, by = 0.05)) {
+  
+  f1_results <- data.frame(threshold = thresholds, F1 = NA)
+  
+  for (i in seq_along(thresholds)) {
+    t <- thresholds[i]
+    pred_class <- ifelse(prob > t, "POSITIVE", "NEGATIVE")
+    f1_results$F1[i] <- f1_score(actual, pred_class)
+  }
+  
+  best_threshold <- f1_results$threshold[which.max(f1_results$F1)]
+  cat("Best threshold for", model_name, ":", best_threshold, "\n")
+  
+  pred_class <- ifelse(prob > best_threshold, "POSITIVE", "NEGATIVE")
+  pred_class <- as.factor(pred_class)
+  
+  cm <- confusionMatrix(pred_class, actual)
+  print(cm)
+  
+  roc_obj <- roc(actual, prob)
+  plot(roc_obj, main = paste("ROC Curve -", model_name))
+  
+  model_auc <- auc(roc_obj)
+  cat(model_name, "AUC:", model_auc, "\n")
+  
+  list(
+    f1_results = f1_results,
+    best_threshold = best_threshold,
+    pred_class = pred_class,
+    confusion_matrix = cm,
+    roc = roc_obj,
+    auc = model_auc
+  )
+}
+```
+
+
+## Lasso
+```{r}
+x_train <- model.matrix(flags_recommend_frend ~ ., data = train.data)[, -1]
+x_test  <- model.matrix(flags_recommend_frend ~ ., data = test.data)[, -1]
+
+y_train <- ifelse(train.data$flags_recommend_frend == "POSITIVE", 1, 0)
+
+cv_lasso <- cv.glmnet(
+  x_train,
+  y_train,
+  family = "binomial",
+  alpha = 1
+)
+
+lasso_prob <- predict(
+  cv_lasso,
+  newx = x_test,
+  s = "lambda.min",
+  type = "response"
+)
+
+lasso_prob <- as.numeric(lasso_prob)
+
+lasso_eval <- evaluate_model(
+  prob = lasso_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "LASSO"
+)
+```
+
+## Ridge
+```{r}
+set.seed(123)
+cv_ridge <- cv.glmnet(
+  x_train, y_train,
+  family = "binomial",
+  alpha = 0
+)
+
+ridge_prob <- predict(cv_ridge, newx = x_test, s = "lambda.min", type = "response")
+ridge_prob <- as.numeric(ridge_prob)
+
+ridge_eval <- evaluate_model(
+  prob = ridge_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "Ridge"
+)
+```
+
+## Elastic Net
+```{r}
+set.seed(123)
+cv_enet <- cv.glmnet(
+  x_train, y_train,
+  family = "binomial",
+  alpha = 0.5
+)
+
+enet_prob <- predict(cv_enet, newx = x_test, s = "lambda.min", type = "response")
+enet_prob <- as.numeric(enet_prob)
+
+enet_eval <- evaluate_model(
+  prob = enet_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "Elastic Net"
+)
+```
+## Logit again
+```{r}
+set.seed(123)
+
+model_logit <- glm(
+  flags_recommend_frend ~ .,
+  data = train.data,
+  family = binomial
+)
+
+logit_prob <- predict(
+  model_logit,
+  newdata = test.data,
+  type = "response"
+)
+
+logit_eval <- evaluate_model(
+  prob = log_pred_prob,
+  actual = test.data$flags_recommend_frend,
+  model_name = "Logistic"
+)
+
+```
+
+```{r}
+model_comparison <- data.frame(
+  Model = c("Logistic", "LASSO", "Ridge", "Elastic Net"),
+  Best_Threshold = c(
+    logit_eval$best_threshold,
+    lasso_eval$best_threshold,
+    ridge_eval$best_threshold,
+    enet_eval$best_threshold
+  ),
+  AUC = c(
+    as.numeric(logit_eval$auc),
+    as.numeric(lasso_eval$auc),
+    as.numeric(ridge_eval$auc),
+    as.numeric(enet_eval$auc)
+  ),
+  Accuracy = c(
+    as.numeric(logit_eval$confusion_matrix$overall["Accuracy"]),
+    as.numeric(lasso_eval$confusion_matrix$overall["Accuracy"]),
+    as.numeric(ridge_eval$confusion_matrix$overall["Accuracy"]),
+    as.numeric(enet_eval$confusion_matrix$overall["Accuracy"])
+  ),
+  F1 = c(
+    max(logit_eval$f1_results$F1),
+    max(lasso_eval$f1_results$F1),
+    max(ridge_eval$f1_results$F1),
+    max(enet_eval$f1_results$F1)
+  )
+)
+
+model_comparison
+```
+Standard Logistic Regression achieves the highest AUC (0.9304), but only marginally above LASSO and Elastic Net, suggesting little gain from regularization in discrimination performance.
+
+In terms of classification performance, LASSO stands out with the highest F1 score (0.8205) and accuracy (0.8945), indicating a slightly better balance between precision and recall. Ridge performs the worst across all metrics, with noticeably lower accuracy and F1, suggesting it may be over-smoothing important features.
+
+Overall, the differences are small, but LASSO provides the best trade-off between predictive accuracy and model simplicity, making it the most reliable choice among the base-only models.
+
+# Sentiment Add-Ons
+
+## Calculate mean and sds across each model's text columns to get the average or compound sentiment
+```{r}
+df$sent_vader_avg <- rowMeans(
+  df[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_vader_sd <- apply(
+  df[, c(
+    "vader_summary_compound",
+    "vader_pros_compound",
+    "vader_cons_compound",
+    "vader_advice_compound"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+df$sent_distilbert_avg <- rowMeans(
+  df[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_distilbert_sd <- apply(
+  df[, c(
+    "distilbert_summary_signed",
+    "distilbert_pros_signed",
+    "distilbert_cons_signed",
+    "distilbert_advice_signed"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+
+df$sent_roberta_avg <- rowMeans(
+  df[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  na.rm = TRUE
+)
+
+df$sent_roberta_sd <- apply(
+  df[, c(
+    "roberta_summary_signed",
+    "roberta_pros_signed",
+    "roberta_cons_signed",
+    "roberta_advice_signed"
+  )],
+  1,
+  sd,
+  na.rm = TRUE
+)
+```
+
+# Just column binding the new compounded sentiment scores to original log_data
+```{r}
+log_data_vader <- cbind(
+  log_data,
+  df[, c(
+    "sent_vader_avg",
+    "sent_vader_sd"
+  )]
+)
+
+log_data_distilbert <- cbind(
+  log_data,
+  df[, c(
+    "sent_distilbert_avg",
+    "sent_distilbert_sd"
+  )]
+)
+
+log_data_roberta <- cbind(
+  log_data,
+  df[, c(
+    "sent_roberta_avg",
+    "sent_roberta_sd"
+  )]
+)
+
+log_data_all <- cbind(
+  log_data,
+  df[, c(
+    "sent_vader_avg",
+    "sent_vader_sd",
+    "sent_distilbert_avg",
+    "sent_distilbert_sd",
+    "sent_roberta_avg",
+    "sent_roberta_sd"
+  )]
+)
+
+datasets <- list(
+  base_only = log_data,
+  vader = log_data_vader,
+  distilbert = log_data_distilbert,
+  roberta = log_data_roberta,
+  base_and_all_sent = log_data_all
+)
+
+
+```
+
+```{r}
+results <- list()
+
+for (name in names(datasets)) {
+  
+  df_current <- datasets[[name]]
+  
+  train_df <- df_current[train_index, ]
+  test_df  <- df_current[-train_index, ]
+  
+  # Logistic
+  model_logit <- glm(
+    flags_recommend_frend ~ .,
+    data = train_df,
+    family = binomial
+  )
+  
+  logit_prob <- predict(model_logit, newdata = test_df, type = "response")
+  
+  logit_eval <- evaluate_model(
+    prob = logit_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("Base Logistic +", name)
+  )
+  
+  # glmnet inputs
+  x_train <- model.matrix(flags_recommend_frend ~ ., data = train_df)[, -1]
+  x_test  <- model.matrix(flags_recommend_frend ~ ., data = test_df)[, -1]
+  y_train <- ifelse(train_df$flags_recommend_frend == "POSITIVE", 1, 0)
+  
+  # LASSO
+  cv_lasso <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 1)
+  lasso_prob <- as.numeric(predict(cv_lasso, newx = x_test, s = "lambda.min", type = "response"))
+  
+  lasso_eval <- evaluate_model(
+    prob = lasso_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("LASSO +", name)
+  )
+  
+  # Ridge
+  cv_ridge <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 0)
+  ridge_prob <- as.numeric(predict(cv_ridge, newx = x_test, s = "lambda.min", type = "response"))
+  
+  ridge_eval <- evaluate_model(
+    prob = ridge_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("Ridge +", name)
+  )
+  
+  # Elastic Net
+  cv_enet <- cv.glmnet(x_train, y_train, family = "binomial", alpha = 0.5)
+  enet_prob <- as.numeric(predict(cv_enet, newx = x_test, s = "lambda.min", type = "response"))
+  
+  enet_eval <- evaluate_model(
+    prob = enet_prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("Elastic Net +", name)
+  )
+  
+  # Store results
+  results[[name]] <- list(
+    logit = logit_eval,
+    lasso = lasso_eval,
+    ridge = ridge_eval,
+    enet  = enet_eval
+  )
+}
+
+
+```
+
+```{r}
+model_comparison <- do.call(rbind, lapply(names(results), function(name) {
+  
+  res <- results[[name]]
+  
+  data.frame(
+    Features = name,
+    Model = c("Logistic Regression", "LASSO LogReg", "Ridge LogReg", "Elastic Net LogReg"),
+    
+    AUC = c(
+      as.numeric(res$logit$auc),
+      as.numeric(res$lasso$auc),
+      as.numeric(res$ridge$auc),
+      as.numeric(res$enet$auc)
+    ),
+    
+    F1 = c(
+      max(res$logit$f1_results$F1),
+      max(res$lasso$f1_results$F1),
+      max(res$ridge$f1_results$F1),
+      max(res$enet$f1_results$F1)
+    ),
+    
+    Best_Threshold = c(
+      res$logit$best_threshold,
+      res$lasso$best_threshold,
+      res$ridge$best_threshold,
+      res$enet$best_threshold
+    ),
+    
+    Accuracy = c(
+      as.numeric(res$logit$confusion_matrix$overall["Accuracy"]),
+      as.numeric(res$lasso$confusion_matrix$overall["Accuracy"]),
+      as.numeric(res$ridge$confusion_matrix$overall["Accuracy"]),
+      as.numeric(res$enet$confusion_matrix$overall["Accuracy"])
+    )
+  )
+}))
+
+model_comparison %>% arrange(desc(AUC))
+```
+
+```{r}
+rank_plot_data <- model_comparison %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1))
+  ) %>%
+  select(Model_Label, AUC_Rank, F1_Rank) %>%
+  pivot_longer(
+    cols = c(AUC_Rank, F1_Rank),
+    names_to = "Metric",
+    values_to = "Rank"
+  ) %>%
+  mutate(
+    Metric = recode(Metric,
+      AUC_Rank = "AUC",
+      F1_Rank = "F1"
+    )
+  )
+
+ggplot(rank_plot_data, aes(x = reorder(Model_Label, Rank), y = Rank, color = Metric)) +
+  geom_point(aes(size = Rank == 1)) +
+  coord_flip() +
+  scale_y_reverse() +
+  scale_size_manual(values = c("FALSE" = 2.5, "TRUE" = 4.5), guide = "none") +
+  theme_minimal() +
+  labs(
+    title = "Model Rankings by AUC and F1",
+    x = "Model",
+    y = "Rank (1 = Best)"
+  )
+```
+While Elastic Net and  Logistic with all sentiment features achieved the highest F1 scores, Logistic Regression with VADER features achieved the highest AUC. Since AUC is the primary evaluation metric, it is preferred as it reflects better ranking performance across all thresholds.
+
+The plot reveals a clear trade-off between AUC and F1 across models. Ridge-based models, particularly with DistilBERT features, achieve the highest AUC, indicating strong ranking performance. In contrast, LASSO and Elastic Net models with full sentiment features achieve the highest F1 scores, suggesting better balance between precision and recall. This indicates that while transformer-based sentiment features enhance ranking ability, aggregated sentiment features improve classification performance. No single model dominates across both metrics, highlighting the importance of selecting models based on the evaluation objective.
+
+# Decision Tree
+
+# Import packages
+```{r}
+# ---- 0. Install / load packages ----
+pkg_needed <- c("caret", "rpart", "rattle")
+for (p in pkg_needed) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
+#install.packages("bitops")
+#install.packages("ggplot2")
+#install.packages("lattice")
+#install.packages("Matrix")
+#install.packages("rpart.plot")
+library(caret)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+```
+
+# Create a subset for decision tree 
+```{r}
+tree_data <- df %>% 
+  select( 
+    flags_recommend_frend, 
+    rating_overall,
+    rating_culture_values, 
+    rating_work_life, 
+    rating_compensation_benefits, 
+    rating_senior_leadership, 
+    rating_career_opportunities, 
+    rating_diversity_inclusion, 
+    flags_business_outlook, 
+    flags_ceo_approval,
+    employee_length, 
+    employee_job_quit, 
+    sector, 
+    covid_related_review, 
+    career_missing
+  )
+
+# Recode recommendation / outlook / CEO approval into numeric variables
+tree_data <- tree_data %>%
+  dplyr::mutate(
+    employee_job_quit = as.integer(employee_job_quit),
+    career_missing = as.integer(career_missing),
+    flags_recommend_frend = as.factor(flags_recommend_frend),
+    sector = as.integer(as.factor(sector)),
+    flags_business_outlook = as.integer(as.factor(flags_business_outlook)),
+    flags_ceo_approval = as.integer(as.factor(flags_ceo_approval))
+  )
+```
+
+# Split the dataset into training and testing
+```{r}
+library(caret)
+
+set.seed(123)
+
+train_index <- createDataPartition(
+  tree_data$flags_recommend_frend,
+  p = 0.8,
+  list = FALSE
+)
+
+tree.train.data <- tree_data[train_index, ]
+tree.test.data <- tree_data[-train_index, ]
+
+# Check class imbalance after splitting
+prop.table(table(tree.train.data$flags_recommend_frend))
+prop.table(table(tree.test.data$flags_recommend_frend))
+```
+
+# Train the Decision Tree
+```{r}
+# Fit the initial tree
+set.seed(123)
+tree_model <- rpart(
+  flags_recommend_frend ~ .,
+  data = tree.train.data,
+  method = "class", 
+  control = rpart.control(cp = 0, xval = 10, minsplit = 2, minbucket = 1)
+)
+
+# Visualize the tree
+rpart.plot(tree_model, main = "Initial Tree")
+
+# Check CP table
+printcp(tree_model)
+
+# Select the best CP value
+best_cp <- tree_model$cptable[
+  which.min(tree_model$cptable[, "xerror"]),
+  "CP"
+]
+
+cat("\nBest CP value:", best_cp, "\n")
+
+# Prune the tree using best CP value
+pruned_tree <- prune(tree_model, cp = best_cp)
+
+# Visualize the pruned tree
+fancyRpartPlot(pruned_tree, main = "Optimal Pruned Tree")
+
+# Predict on test data
+pred_test <- predict(pruned_tree, newdata = tree.test.data, type = "class")
+
+# Confusion Matrix and Metrics
+pruned_tree_cm <- confusionMatrix(pred_test, tree.test.data$flags_recommend_frend)
+pruned_tree_cm
+```
+# ROC curve and AUC 
+```{r}
+# ROC and AUC for pruned tree
+#install.packages("pROC")
+library(pROC)
+
+# Make sure outcome levels are ordered correctly
+tree.test.data$flags_recommend_frend <- factor(
+  tree.test.data$flags_recommend_frend,
+  levels = c("NEGATIVE", "POSITIVE")
+)
+
+# Predicted probabilities
+pred_prob <- predict(pruned_tree, newdata = tree.test.data, type = "prob")
+
+# Probability of positive class
+pred_prob_positive <- pred_prob[, "POSITIVE"]
+
+# ROC curve
+roc_pruned_tree <- roc(
+  response = tree.test.data$flags_recommend_frend,
+  predictor = pred_prob_positive,
+  levels = c("NEGATIVE", "POSITIVE"),
+  direction = "<"
+)
+
+# AUC
+auc_pruned_tree <- auc(roc_pruned_tree)
+auc_pruned_tree
+
+# Plot ROC
+plot(
+  roc_pruned_tree,
+  col = "blue",
+  lwd = 2,
+  main = "ROC Curve - Pruned Decision Tree"
+)
+
+# Add diagonal reference line
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+# Random forest:
+
+# Import packages
+```{r}
+#install.packages("randomForest")
+#install.packages("ggplot2")
+library(randomForest)
+library(caret)
+```
+
+
+# Train the random forest
+```{r}
+# Train Random Forest with 10-fold CV
+set.seed(123)
+
+p <- ncol(tree.train.data) - 1
+
+rf_model <- train(
+  flags_recommend_frend ~ .,
+  data = tree.train.data,
+  method = "rf",
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = expand.grid(mtry = 1:p),
+  ntree = 500,
+  importance = TRUE
+)
+
+# Find the best mtry
+bestTune <- rf_model$bestTune
+bestTune
+
+# Refit the model with the best mtry
+rf_model_tuned <- train(
+  flags_recommend_frend ~ .,
+  data = tree.train.data,
+  method = "rf",
+  trControl = trainControl(
+    method = "cv",
+    number = 10,
+    classProbs = TRUE,
+    summaryFunction = twoClassSummary
+  ),
+  tuneGrid = expand.grid(mtry = bestTune),  # use your chosen mtry
+  ntree = 500,
+  metric = "ROC",
+  importance = TRUE
+)
+
+# Variable importance plots
+varImpPlot(rf_model_tuned$finalModel, type = 1, main = "Mean Decrease Accuracy (MSE)")  # Mean Decrease Accuracy (MSE)
+varImpPlot(rf_model_tuned$finalModel, type = 2, main = "Mean Decrease Node Impurity")  # Mean Decrease Node Impurity
+
+# Predict on test data
+pred_test <- predict(rf_model_tuned, tree.test.data)
+
+# Confusion matrix and metrics
+cm <- confusionMatrix(
+  pred_test,
+  tree.test.data$flags_recommend_frend
+)
+
+cm
+
+# Metrics
+sensitivity <- cm$byClass["Sensitivity"]
+specificity <- cm$byClass["Specificity"]
+accuracy    <- cm$overall["Accuracy"]
+
+#sensitivity
+#specificity
+#accuracy
+```
+# ROC curve and AUC
+```{r}
+library(pROC)
+# Predict probabilities
+rf_pred_prob <- predict(rf_model_tuned, newdata = tree.test.data, type = "prob")
+
+# Extract probability of POSITIVE class
+rf_pred_prob_pos <- rf_pred_prob[, "POSITIVE"]
+
+# Make Sure Target is Factor
+test.data$flags_recommend_frend <- factor(
+  tree.test.data$flags_recommend_frend,
+  levels = c("NEGATIVE", "POSITIVE")
+)
+
+# Compute ROC Curve
+roc_rf <- roc(
+  response = tree.test.data$flags_recommend_frend,
+  predictor = rf_pred_prob_pos,
+  levels = c("NEGATIVE", "POSITIVE"),
+  direction = "<"
+)
+
+# AUC
+auc_rf <- auc(roc_rf)
+auc_rf
+
+# Plot ROC curve
+plot(
+  roc_rf,
+  col = "blue",
+  lwd = 2,
+  main = "ROC Curve - Random Forest"
+)
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+```
+
+# RF Sentiment Add-ons
+```{r}
+tree_datasets <- list(
+  base_only = tree_data,
+  vader = cbind(tree_data, df[, c("sent_vader_avg", "sent_vader_sd")]),
+  distilbert = cbind(tree_data, df[, c("sent_distilbert_avg", "sent_distilbert_sd")]),
+  roberta = cbind(tree_data, df[, c("sent_roberta_avg", "sent_roberta_sd")]),
+  base_and_all_sent = cbind(tree_data, df[, c(
+    "sent_vader_avg", "sent_vader_sd",
+    "sent_distilbert_avg", "sent_distilbert_sd",
+    "sent_roberta_avg", "sent_roberta_sd"
+  )])
+)
+```
+
+# Looping through models and building up result list
+```{r}
+rf_results <- list()
+
+for (name in names(tree_datasets)) {
+  
+  df_current <- tree_datasets[[name]]
+  
+  train_df <- df_current[train_index, ]
+  test_df  <- df_current[-train_index, ]
+  
+  set.seed(123)
+  
+  # Number of predictors for current dataset
+  p <- ncol(train_df) - 1
+  
+  # Step 1: Tune mtry over full grid
+  rf_model <- train(
+    flags_recommend_frend ~ .,
+    data = train_df,
+    method = "rf",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneGrid = expand.grid(mtry = 1:p),
+    ntree = 500,
+    importance = TRUE
+  )
+  
+  # Best mtry for this dataset
+  bestTune <- rf_model$bestTune
+  
+  # Step 2: Refit with best mtry using ROC
+  rf_model_tuned <- train(
+    flags_recommend_frend ~ .,
+    data = train_df,
+    method = "rf",
+    trControl = trainControl(
+      method = "cv",
+      number = 10,
+      classProbs = TRUE,
+      summaryFunction = twoClassSummary
+    ),
+    tuneGrid = bestTune,
+    ntree = 500,
+    metric = "ROC",
+    importance = TRUE
+  )
+  
+  # Optional: variable importance plots
+  # Keep this if you want plots for every dataset; otherwise remove or restrict
+  varImpPlot(
+    rf_model_tuned$finalModel,
+    type = 1,
+    main = paste("Mean Decrease Accuracy - RF +", name)
+  )
+  
+  varImpPlot(
+    rf_model_tuned$finalModel,
+    type = 2,
+    main = paste("Mean Decrease Node Impurity - RF +", name)
+  )
+  
+  # Predict probabilities for POSITIVE class
+  prob <- predict(rf_model_tuned, newdata = test_df, type = "prob")[, "POSITIVE"]
+  
+  # Evaluate
+  eval <- evaluate_model(
+    prob = prob,
+    actual = test_df$flags_recommend_frend,
+    model_name = paste("RF +", name)
+  )
+  
+  # Store everything
+  rf_results[[name]] <- list(
+    best_mtry = bestTune$mtry,
+    rf_model = rf_model,
+    rf_model_tuned = rf_model_tuned,
+    eval = eval
+  )
+}
+```
+
+# RF Model Comparison (Base features vs Sentiment Add-Ons)
+```{r}
+rf_summary <- data.frame(
+  Features = names(rf_results),
+  Model = "Random Forest",
+  Best_mtry = sapply(rf_results, function(x) x$best_mtry),
+  AUC = sapply(rf_results, function(x) as.numeric(x$eval$auc)),
+  F1 = sapply(rf_results, function(x) max(x$eval$f1_results$F1)),
+  Accuracy = sapply(rf_results, function(x) as.numeric(x$eval$confusion_matrix$overall["Accuracy"])),
+  Best_Threshold = sapply(rf_results, function(x) x$eval$best_threshold), row.names = NULL
+)
+
+rf_summary
+```
+Sentiment features do not boost performance as much as they did in Logistic Regression models. The gains in F1 and AUC from VADER and all sentiment features are marginal for an already great performing baseline.
+
+# Ranking every model so far (LogReg + Random Forest)
+
+```{r}
+logistic_df <- model_comparison %>%
+  select(Features, Model, AUC, F1, Accuracy)
+rf_df <- rf_summary %>% select(Features, Model, AUC, F1, Accuracy)
+
+full_summary_df <- bind_rows(logistic_df, rf_df)
+
+full_rank_df <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Accuracy_Rank = dense_rank(desc(Accuracy))
+  )
+full_rank_df
+```
+
+
+```{r}
+rank_plot_data <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1))
+  ) %>%
+  select(Model_Label, AUC_Rank, F1_Rank) %>%
+  pivot_longer(
+    cols = c(AUC_Rank, F1_Rank),
+    names_to = "Metric",
+    values_to = "Rank"
+  ) %>%
+  mutate(
+    Metric = recode(Metric,
+      AUC_Rank = "AUC",
+      F1_Rank = "F1"
+    )
+  )
+
+ggplot(rank_plot_data, aes(x = reorder(Model_Label, Rank), y = Rank, color = Metric)) +
+  geom_point(aes(size = Rank == 1)) +
+  coord_flip() +
+  scale_y_reverse() +
+  scale_size_manual(values = c("FALSE" = 2.5, "TRUE" = 4.5), guide = "none") +
+  theme_minimal() +
+  labs(
+    title = "Model Rankings by AUC and F1",
+    x = "Model",
+    y = "Rank (1 = Best)"
+  )
+```
+
+# Let's get average ranks (using AUC and F1 ranks) and select the best 10 models overall
+```{r}
+full_rank_df <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Avg_Rank = (AUC_Rank + F1_Rank) / 2
+  )
+
+top_models <- full_rank_df %>%
+  slice_min(Avg_Rank, n = 10) %>%
+  arrange(Avg_Rank)
+
+top_models %>% select(Model_Label, AUC_Rank, F1_Rank, Avg_Rank)
+```
+
+
+```{r}
+top_models <- top_models %>%
+  arrange(Avg_Rank) %>%
+  mutate(Model_Label = factor(Model_Label, levels = rev(Model_Label)))
+
+ggplot(top_models, aes(y = Model_Label)) +
+  geom_segment(
+    aes(x = AUC_Rank, xend = F1_Rank, yend = Model_Label),
+    color = "gray70",
+    linewidth = 1
+  ) +
+  geom_point(aes(x = AUC_Rank, color = "AUC"), size = 3) +
+  geom_point(aes(x = F1_Rank, color = "F1"), size = 3) +
+  scale_x_reverse() +
+  theme_minimal() +
+  labs(
+    title = "Top 10 Models: AUC vs F1 Rank (Best to Worst Avg Rank)",
+    x = "Rank (1 = Best)",
+    y = NULL,
+    color = "Metric"
+  )
+```
+To compare the top-performing models, we examine their rankings in both AUC and F1 score, focusing on the ten best models overall. A clear pattern emerges: models that incorporate all sentiment features consistently perform the best. In particular, LASSO and Elastic Net logistic regression achieve the strongest F1 rankings while maintaining solid AUC performance, indicating they strike a good balance between classification accuracy and ranking ability.
+
+In contrast, models using only VADER sentiment tend to rank higher in AUC but lower in F1. This suggests they are better at ordering observations correctly but less effective at making accurate classifications at a fixed threshold. 
+
+Random Forest models fall in between—generally competitive, but they do not surpass the best-performing regularized logistic models.
+
+Overall, the results suggest that combining richer sentiment features with regularization leads to the most reliable performance, especially when both ranking quality (AUC) and classification accuracy (F1) are considered together.
+
+## Filtering models that used non-sentiment base features
+```{r}
+rank_plot_data_base <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Avg_Rank = (AUC_Rank + F1_Rank) / 2
+  ) %>%
+  filter(Features == "base_only")
+
+rank_plot_data_base %>%
+  select(Model_Label, AUC_Rank, F1_Rank, Avg_Rank) %>%
+  arrange(Avg_Rank)
+```
+
+# Plot best models for base features
+```{r}
+base_only_models <- full_summary_df %>%
+  mutate(
+    Model_Label = paste(Features, Model, sep = " + "),
+    AUC_Rank = dense_rank(desc(AUC)),
+    F1_Rank = dense_rank(desc(F1)),
+    Avg_Rank = (AUC_Rank + F1_Rank) / 2
+  ) %>%
+  filter(Features == "base_only") %>%
+  arrange(Avg_Rank) %>%
+  mutate(Model_Label = factor(Model_Label, levels = rev(Model_Label)))
+
+ggplot(base_only_models, aes(y = Model_Label)) +
+  geom_segment(
+    aes(x = AUC_Rank, xend = F1_Rank, yend = Model_Label),
+    color = "gray70",
+    linewidth = 1
+  ) +
+  geom_point(aes(x = AUC_Rank, color = "AUC"), size = 3) +
+  geom_point(aes(x = F1_Rank, color = "F1"), size = 3) +
+  scale_x_reverse() +
+  theme_minimal() +
+  labs(
+    title = "Base-Only Models: AUC vs F1 Rank (Best to Worst Avg Rank)",
+    x = "Rank (1 = Best)",
+    y = NULL,
+    color = "Metric"
+  )
+```
+Among the base-only models, Random Forest achieves the best overall ranking when evaluated across all models, driven by a strong F1 rank despite a weaker AUC. This suggests that while linear models such as LASSO and Logistic Regression provide slightly better discrimination, Random Forest offers a better balance between precision and recall.
+
+Overall, however, all base-only models rank in the middle compared to sentiment-enhanced models, indicating that incorporating sentiment features provides a meaningful improvement in performance.
