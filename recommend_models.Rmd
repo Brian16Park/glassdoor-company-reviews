@@ -114,8 +114,7 @@ base_features <- c(
   "employee_job_quit",
   "sector",
   "covid_related_review",
-  "career_missing",
-  "helpfulness_score"
+  "career_missing"
 )
 
 make_model_data <- function(df, extra_cols = NULL) {
