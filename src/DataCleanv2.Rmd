@@ -18,6 +18,8 @@ library(dplyr)
 library(stringr)
 library(lubridate)
 library(tidyr)
+library(readxl)
+
 ```
 
 # Reading the File
@@ -85,6 +87,15 @@ df_clean <- df_clean %>%
 # Renaming the column and converting to binary
 ```
 
+# Flag missing flags_ceo_approval
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    flags_ceo_approval = ifelse(is.na(flags_ceo_approval), "NO_OPINION", flags_ceo_approval)
+  )
+```
+
+
 # Converting numeric columns
 ```{r}
 df_clean <- df_clean %>%
@@ -99,6 +110,23 @@ df_clean <- df_clean %>%
     rating_senior_leadership = as.numeric(rating_senior_leadership),
     rating_career_opportunities = as.numeric(rating_career_opportunities)
   )
+
+```
+
+# Cleaning Review Comments
+
+```{r}
+
+back.review.df <- read_excel(
+  here("data", "processed", "Backup_of_Cleaned_Reviews.xlsx")
+)
+
+df_clean <- df_clean %>%
+  mutate(summary = back.review.df$summary_new) %>%
+  mutate(advice_to_management = back.review.df$advice_to_management_new) %>%
+  mutate(review_pros = back.review.df$review_pros_new) %>%
+  mutate(review_cons = back.review.df$review_cons_new)
+
 
 ```
 
