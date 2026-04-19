@@ -770,7 +770,7 @@ ggplot(logistic_rank_plot, aes(y = Model_Label)) +
   scale_x_reverse() +
   theme_minimal() +
   labs(
-    title = "Logistic Models with Sentiment Add-Ons: AUC Rank vs F1 Rank vs Average Rank",
+    title = "Logistic Models with Sentiment Add-Ons",
     x = "Rank (1 = Best)",
     y = NULL,
     color = "Metric"
@@ -874,7 +874,7 @@ ggplot(rf_rank_plot, aes(y = Model_Label)) +
   scale_x_reverse() +
   theme_minimal() +
   labs(
-    title = "Random Forest Models with Sentiment Add-Ons: AUC Rank vs F1 Rank vs Average Rank",
+    title = "Random Forest Models with Sentiment Add-Ons",
     x = "Rank (1 = Best)",
     y = NULL,
     color = "Metric"
@@ -1068,9 +1068,10 @@ Sentiment features—particularly VADER average sentiment—emerge as the most i
 Additionally, sentiment variability (e.g., standard deviation) appears in some models, suggesting that inconsistency across different review sections also carries predictive value. Traditional structured features remain relevant but are often secondary to sentiment in importance rankings.
 
 # 9.3 Top 10 Features for Best Random Forest Model
-```{r}
+```{r plot-top-rf-features, fig.width=11, fig.height=9}
 top_rf_models <- top_models %>%
-  filter(Model == "Random Forest")
+  filter(Model == "Random Forest") %>%
+  distinct(Model_Label)
 
 if (nrow(top_rf_models) == 0) {
   cat("No Random Forest models appear in the top models table.\n")
@@ -1088,14 +1089,21 @@ if (nrow(top_rf_models) == 0) {
   if (nrow(top_rf_features_df) == 0) {
     cat("No Random Forest feature importance rows available for plotting.\n")
   } else {
+    rf_model_order <- top_rf_models$Model_Label
+
     top_rf_features_plot <- top_rf_features_df %>%
       mutate(
-        term_plot = tidytext::reorder_within(term_clean, Importance_scaled, Model_Label),
-        Direction = factor(Direction, levels = c("RF Importance"))
+        Model_Label = factor(Model_Label, levels = rf_model_order),
+        term_clean_wrap = stringr::str_wrap(term_clean, width = 22),
+        term_plot = tidytext::reorder_within(
+          term_clean_wrap,
+          Importance_scaled,
+          Model_Label
+        )
       )
 
-    ggplot(top_rf_features_plot, aes(x = term_plot, y = Importance_scaled, fill = Direction)) +
-      geom_col(width = 0.7) +
+    ggplot(top_rf_features_plot, aes(x = term_plot, y = Importance_scaled)) +
+      geom_col(width = 0.7, fill = "#E57373") +
       coord_flip() +
       tidytext::scale_x_reordered() +
       facet_wrap(~ Model_Label, ncol = 1, scales = "free_y") +
@@ -1103,14 +1111,14 @@ if (nrow(top_rf_models) == 0) {
       labs(
         title = "Top 10 Features for the Best Random Forest Models",
         x = NULL,
-        y = "Relative Importance (scaled within model)",
-        fill = "Effect"
+        y = "Relative Importance (scaled within model)"
       ) +
       theme(
         axis.text.y = element_text(size = 9),
-        strip.text = element_text(size = 11, face = "bold"),
-        legend.position = "bottom",
-        panel.spacing = unit(1.2, "lines")
+        strip.text = element_text(size = 10, face = "bold"),
+        panel.spacing = unit(1.5, "lines"),
+        legend.position = "none",
+        plot.title = element_text(face = "bold")
       )
   }
 }
