@@ -115,6 +115,7 @@ base_features <- c(
   "sector",
   "covid_related_review",
   "career_missing"
+  
 )
 
 make_model_data <- function(df, extra_cols = NULL) {
@@ -131,9 +132,12 @@ make_model_data <- function(df, extra_cols = NULL) {
         flags_recommend_frend,
         levels = c("NEGATIVE", "POSITIVE")
       ),
-      sector = as.integer(as.factor(sector)),
-      flags_business_outlook = as.integer(as.factor(flags_business_outlook)),
-      flags_ceo_approval = as.integer(as.factor(flags_ceo_approval))
+      sector = as.factor(sector),
+      #flags_business_outlook = as.integer(as.factor(flags_business_outlook)),
+      #flags_ceo_approval = as.integer(as.factor(flags_ceo_approval))
+      flags_business_outlook = as.numeric(recode(flags_business_outlook,
+                                "NEGATIVE" = -1,"NEUTRAL"  = 0, "POSITIVE" = 1)),
+      flags_ceo_approval = as.factor(flags_ceo_approval)
     )
 }
 
@@ -246,7 +250,6 @@ clean_feature_names <- function(x) {
     stringr::str_replace_all("flags business outlook", "business outlook") %>%
     stringr::str_replace_all("flags ceo approval", "ceo approval") %>%
     stringr::str_replace_all("employee job quit", "job quit") %>%
-    stringr::str_replace_all("helpfulness score", "helpfulness") %>%
     stringr::str_replace_all("sent vader avg", "vader avg") %>%
     stringr::str_replace_all("sent vader sd", "vader sd") %>%
     stringr::str_replace_all("sent distilbert avg", "distilbert avg") %>%
@@ -1069,40 +1072,48 @@ Additionally, sentiment variability (e.g., standard deviation) appears in some m
 top_rf_models <- top_models %>%
   filter(Model == "Random Forest")
 
-top_rf_features_df <- importance_all %>%
-  semi_join(top_rf_models, by = "Model_Label") %>%
-  filter(Model == "Random Forest") %>%
-  group_by(Model_Label) %>%
-  slice_max(order_by = Importance, n = 10, with_ties = FALSE) %>%
-  mutate(
-    Importance_scaled = Importance / max(Importance)
-  ) %>%
-  ungroup()
+if (nrow(top_rf_models) == 0) {
+  cat("No Random Forest models appear in the top models table.\n")
+} else {
+  top_rf_features_df <- importance_all %>%
+    semi_join(top_rf_models, by = "Model_Label") %>%
+    filter(Model == "Random Forest") %>%
+    group_by(Model_Label) %>%
+    slice_max(order_by = Importance, n = 10, with_ties = FALSE) %>%
+    mutate(
+      Importance_scaled = Importance / max(Importance, na.rm = TRUE)
+    ) %>%
+    ungroup()
 
-top_rf_features_plot <- top_rf_features_df %>%
-  mutate(
-    term_plot = tidytext::reorder_within(term_clean, Importance_scaled, Model_Label),
-    Direction = factor(Direction, levels = c("RF Importance"))
-  )
+  if (nrow(top_rf_features_df) == 0) {
+    cat("No Random Forest feature importance rows available for plotting.\n")
+  } else {
+    top_rf_features_plot <- top_rf_features_df %>%
+      mutate(
+        term_plot = tidytext::reorder_within(term_clean, Importance_scaled, Model_Label),
+        Direction = factor(Direction, levels = c("RF Importance"))
+      )
 
-ggplot(top_rf_features_plot, aes(x = term_plot, y = Importance_scaled, fill = Direction)) +
-  geom_col(width = 0.7) +
-  coord_flip() +
-  tidytext::scale_x_reordered() +
-  facet_wrap(~ Model_Label, ncol = 1, scales = "free_y") +
-  theme_minimal(base_size = 12) +
-  labs(
-    title = "Top 10 Features for the Best Random Forest Models",
-    x = NULL,
-    y = "Relative Importance (scaled within model)",
-    fill = "Effect"
-  ) +
-  theme(
-    axis.text.y = element_text(size = 9),
-    strip.text = element_text(size = 11, face = "bold"),
-    legend.position = "bottom",
-    panel.spacing = unit(1.2, "lines")
-  )
+    ggplot(top_rf_features_plot, aes(x = term_plot, y = Importance_scaled, fill = Direction)) +
+      geom_col(width = 0.7) +
+      coord_flip() +
+      tidytext::scale_x_reordered() +
+      facet_wrap(~ Model_Label, ncol = 1, scales = "free_y") +
+      theme_minimal(base_size = 12) +
+      labs(
+        title = "Top 10 Features for the Best Random Forest Models",
+        x = NULL,
+        y = "Relative Importance (scaled within model)",
+        fill = "Effect"
+      ) +
+      theme(
+        axis.text.y = element_text(size = 9),
+        strip.text = element_text(size = 11, face = "bold"),
+        legend.position = "bottom",
+        panel.spacing = unit(1.2, "lines")
+      )
+  }
+}
 ```
 
 
