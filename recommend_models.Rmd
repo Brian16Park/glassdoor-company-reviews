@@ -246,7 +246,6 @@ clean_feature_names <- function(x) {
     stringr::str_replace_all("flags business outlook", "business outlook") %>%
     stringr::str_replace_all("flags ceo approval", "ceo approval") %>%
     stringr::str_replace_all("employee job quit", "job quit") %>%
-    stringr::str_replace_all("helpfulness score", "helpfulness") %>%
     stringr::str_replace_all("sent vader avg", "vader avg") %>%
     stringr::str_replace_all("sent vader sd", "vader sd") %>%
     stringr::str_replace_all("sent distilbert avg", "distilbert avg") %>%
