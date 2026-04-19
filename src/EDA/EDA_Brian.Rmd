@@ -17,6 +17,17 @@ library(corrplot)
 library(here)
 library(scales)
 library(forcats)
+library(stopwords)
+library(tidytext)
+library(textrecipes)
+library(recipes)
+library(stringr)      # String cleaning
+library(ggwordcloud)
+library(RColorBrewer)
+
+library(reticulate)
+use_python("/usr/local/bin/python3")
+
 ```
 
 # Read from current data version
@@ -352,7 +363,88 @@ ggplot(df, aes(x = factor(rating_overall, levels = c(1,2,3,4,5)),
 
 Helpfulness scores are highest and most variable for low ratings (1–2), while high ratings (4–5) have consistently low helpfulness. This suggests that negative reviews are more likely to be perceived as informative, whereas positive reviews tend to receive less engagement.
 
-# 15. Mean Word Count in Review Text Fields by Overall Rating
+# 15. Word Cloud Plot
+
+```{r}
+new_stopwords <- c(tidytext::stop_words$word, stopwords("english"),  "good", "bad", "anything", "great", "will", "company", "job", "work", "employee", "here","people", "employees")
+target_cols <- c('summary', 'advice_to_management', 'review_pros', 'review_cons')
+
+
+plt <- import("matplotlib.pyplot", delay_load = TRUE)
+wc_mod <- import("wordcloud", delay_load = TRUE)
+
+plotWordCloudFromDF <- function(df, column_name) {
+  
+  # --- Step A: R-side Text Processing ---
+  tfidf_weights <- df %>%
+    mutate(doc_id = row_number()) %>%
+    # Generate 1 to 3-word n-grams
+    unnest_tokens(word, !!sym(column_name), token = "ngrams", n = 3, n_min = 1) %>%
+    # Exclude standard and custom stopwords
+    filter(!word %in% stop_words$word, !word %in% new_stopwords) %>%
+    count(doc_id, word) %>%
+    bind_tf_idf(word, doc_id, n) %>%
+    # Use mean TF-IDF across documents as the importance metric
+    group_by(word) %>%
+    summarise(weight = mean(tf_idf)) %>%
+    ungroup() %>%
+    # Replace tokens like 'good_service' with 'good service' for visual appeal
+    mutate(word = str_replace_all(word, "_", " ")) %>%
+    arrange(desc(weight)) %>%
+    slice_head(n = 300)
+
+  # --- Step B: Object Conversion Fix ---
+  # Create a named list: keys = words, values = weights
+  weight_list <- setNames(as.list(tfidf_weights$weight), tfidf_weights$word)
+  # EXPLICITLY convert to Python Dictionary to avoid 'AttributeError'
+  weight_dict <- dict(weight_list)
+  
+  # Set colormap based on column intent
+  current_cmap <- switch(column_name, 
+                         "review_pros" = "Greens", 
+                         "review_cons" = "Reds", 
+                         "viridis")
+
+  # --- Step C: Pythonic Execution via R ---
+  # Initialize the WordCloud generator
+  # Use 'L' suffix to ensure R doubles are passed as Python integers
+  wc_gen <- wc_mod$WordCloud(
+    width = 800L,            
+    height = 400L, 
+    background_color = 'white',
+    max_words = 300L,
+    colormap = current_cmap,
+    prefer_horizontal = 0.7,
+    random_state = 42L
+  )
+  
+  # Generate the cloud from the frequency dictionary
+  cloud_obj <- wc_gen$generate_from_frequencies(weight_dict)
+  
+  # Render using Matplotlib
+  plt$figure(figsize = c(15, 8))
+  plt$imshow(cloud_obj, interpolation = 'bilinear')
+  plt$axis('off')
+  plt$title(paste("WordCloud of", column_name), fontsize = 20L, pad = 20L)
+  
+  # Save the plot locally as PNG
+  output_filename <- paste0("wordcloud_", column_name, ".png")
+  plt$savefig(output_filename, bbox_inches = "tight")
+  message(paste("Saved to:", output_filename))
+  
+  plt$show()
+}
+
+for (col in target_cols) {
+  plotWordCloudFromDF(df, col)
+}
+```
+
+
+
+
+
+# 16. Mean Word Count in Review Text Fields by Overall Rating
 ```{r}
 count_words <- function(x) {
   x <- str_squish(x)
@@ -406,7 +498,7 @@ Overall word count decreases steadily as ratings increase, indicating that lower
 
 It is interesting to note that the average word count per across *all* text fields are relatively low (< 70). This fact will be relevant when looking at sentiment score importance during the modeling stage.
 
-# 16. Sentiment Scores across Text Fields vs Overall Rating
+# 17. Sentiment Scores across Text Fields vs Overall Rating
 
 ```{r}
 sent_long <- df %>%
