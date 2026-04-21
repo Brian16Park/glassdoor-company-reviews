@@ -229,6 +229,10 @@ However, employees who started before 2020 are more likely to quit their jobs du
 
 ## Springboard Effect
 
-The springboard effect was found in multiple groups that, although some factors indicating better working conditions were favored, like compensation benefits, business outlook, and CEO approval, they are more likely to quit their job for a better opportunity.
+The springboard effect was found in multiple groups that, although some factors indicating better working conditions were favored, like compensation benefits, business outlook, and CEO approval, they are more likely to quit their job for a better opportunity. It could not be statistically significant since it is not a direct process.
+
+We first see this in the overall employee, which indicates that the springboard effect is a general phenomenon among employees, though it’s not significant statistically. In that case, the better business outlook, empowering the growth and a better mindset, increases the risk of attrition.
+
+This also comes after COVID. Compensation and benefits are considered the most important factors, so employees are more likely to look for a better position, though their current position provides career opportunities.
 
 
