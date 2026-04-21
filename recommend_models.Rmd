@@ -488,12 +488,7 @@ ggplot(base_only_summary_plot, aes(y = Model_Label)) +
     color = "Metric"
   )
 ```
-### Interpretation:
-Across base-only models, performance is driven primarily by structured rating features. Logistic regression and its regularized variants perform similarly, indicating that multicollinearity is present but not severe enough to drastically impact performance. 
 
-Random Forest captures nonlinear relationships and interactions, but does not consistently outperform linear models, suggesting the signal in the base features is largely linear.
-
-Overall, base features alone provide a strong baseline, with limited gains from model complexity.
 
 # 4 Extract Top 10 Base-Only Features for Each Model
 ```{r}
@@ -623,10 +618,7 @@ ggplot(base_rf_features_plot, aes(x = term_plot, y = Importance_scaled, fill = D
     panel.spacing = unit(1.2, "lines")
   )
 ```
-### Interpretation
-The most important predictors across base-only models are consistently rating_overall, flags_business_outlook, and career-related ratings. This suggests that employees’ overall satisfaction and perception of company direction are the strongest drivers of recommendation behavior.
 
-Regularized models (LASSO / Elastic Net) shrink less important variables, highlighting a smaller core set of influential predictors. Random Forest, in contrast, distributes importance more broadly, capturing additional secondary effects.
 
 # 5. Fit Logistic Sentiment-Addons
 
@@ -901,10 +893,7 @@ full_summary_df <- bind_rows(logistic_df, rf_df) %>%
 full_summary_df
 ```
 
-### Interpretation: 
-Adding sentiment features leads to noticeable improvements in model performance, particularly in AUC. Models that incorporate sentiment (especially VADER and RoBERTa) consistently rank higher than base-only models, indicating that textual tone provides additional predictive signal.
 
-The improvement is more pronounced for linear models than Random Forest, suggesting that sentiment features introduce strong linear separability rather than complex nonlinear patterns.
 
 # 7.1 Plot Overall Model Rankings
 ```{r}
@@ -953,10 +942,6 @@ ggplot(full_summary_plot, aes(y = Model_Label)) +
   )
 ```
 
-### Interpretation: 
-Model rankings based on AUC and F1 are generally aligned, though some models perform better on one metric than the other. The average rank provides a balanced evaluation, identifying models that perform consistently well across both metrics.
-
-Top-performing models combine sentiment features with regularized logistic regression, indicating that both feature richness and controlled model complexity are important for optimal performance.
 
 
 # 8. View Top 10 Models by Average Rank
@@ -1062,10 +1047,6 @@ ggplot(top_logit_features_plot, aes(x = term_plot, y = Importance_scaled, fill =
   )
 ```
 
-### Interpretation
-Sentiment features—particularly VADER average sentiment—emerge as the most influential predictors in the best-performing models. This indicates that overall tone of the review is a strong signal for recommendation behavior.
-
-Additionally, sentiment variability (e.g., standard deviation) appears in some models, suggesting that inconsistency across different review sections also carries predictive value. Traditional structured features remain relevant but are often secondary to sentiment in importance rankings.
 
 # 9.3 Top 10 Features for Best Random Forest Model
 ```{r}
@@ -1117,8 +1098,3 @@ if (nrow(top_rf_models) == 0) {
 ```
 
 
-
-# Final Logistic vs RF Interpretation
-Logistic regression models provide clearer and more interpretable feature effects, while Random Forest captures broader patterns but with less interpretability. The fact that logistic-based models perform competitively—or better—suggests that the relationship between features and the target variable is largely linear and well-structured.
-
-This reinforces the effectiveness of feature engineering (especially sentiment) over increasing model complexity (ie. regularization).
