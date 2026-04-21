@@ -3,16 +3,18 @@ title: "Job Quit Factor Analysis"
 author: "Daniel Cheung"
 date: "2026-04-12"
 output:
-  pdf_document: default
-  html_document: default
+  pdf_document:
+    number_sections: true
 ---
 
-Main conclusion: Covid is the most significant protector from quitting the job; missing of career opportunity is the most significant factor leading to job quitting; leadership could negatively affect the willing to stay, but after working 3 years at a company, staffs are more rational, and less sensitive to ratings.
-
-# Job Quit Factor Analysis
+Conclusion: There are multiple reason that leads to the quit of employees, including compensation, diversity culture, and willingness to recommend friends, which are factors decreasing the risk of quitting a job. The employees who have worked less than 3 years are driven by extrinsic motivators, while those who have worked 3-5 years are most “rational” and less likely to be affected by external factors. This research also suggests the Springboard Effect, which means a better working environment triggered their ambition for a better position in other companies. As the tenure goes longer, the higher the CEO approval, will increase the risk. Employees who started work before 2020 crashed by COVID, are less likely to leave; but those who quit after 2020 are looking for a better position under our Springboard Effect Theory.
 
 
-```{r, message = F, warning = F}
+# Introduction
+
+
+```{r, message = F, warning = F, echo = F}
+knitr::opts_chunk$set(fig.width = 8, fig.height = 4)
 if (!requireNamespace("pacman", quietly = TRUE)) {
   install.packages("pacman")
 }
@@ -28,53 +30,27 @@ p_load(car) # VIF
 p_load(survival) # Cox
 p_load(survminer) # Plot
 
-p_load(randomForestSRC)
-
-p_load(stopwords)
-
-p_load(tidyverse)
-p_load(tidymodels)
-p_load(tidytext)
-p_load(textrecipes)
-p_load(Matrix)
-p_load(wordcloud)
-p_load(tm)
-
-p_load(stopwords)
-p_load(RColorBrewer)
-
-p_load(glmnet)
-p_load(pROC)
-
-
-data <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned_v2.csv"))
-
 ```
 
 
 
 ```{r}
+
+data <- read.csv(here("data", "processed", "glassdoor_reviews_cleaned_v2.csv"))
+
 features_base <- c(
   # Ratings
-  # "rating_culture_values",
   "rating_work_life",
   "rating_career_opportunities",
   "rating_compensation_benefits",
-  "rating_senior_leadership",
   "rating_diversity_inclusion",
 
   "flags_business_outlook",
   "flags_ceo_approval",
   "flags_recommend_frend",
 
-  "helpfulness_score",
-  
   # Context
-  "covid_related_review",
-  
-  # Missingness
-  "career_missing"
-
+  "covid_related_review"
 )
 
 data <- data %>%
@@ -96,13 +72,14 @@ data <- data %>%
 ```
 
 
+This figure (a) shows the distribution of tenure (employee length) in the current dataset, revealing a strongly right-skewed pattern. Approximately half of the employees have less than 3 years of tenure, indicating a high rate of attrition among new hires. The survival plot figure (b) illustrates how likely employees are to stay in their position. For this dataset, more than half of the employees are likely to quit their jobs within 3 years, and the proportion of long-term staff is less than 10% of the total sample. COVID is also an important feature that we care about, which has greatly impacted the global economy in recent years. In our dataset, more than half of the employees started or quit their jobs after COVID. Thus, we divide the dataset by tenure and their start or end year. 
+
+In this question, some categorical variables are translated into numerical values. For a binary response, positive and negative are dealt with 1 and 0; for a triplenary response, positive and negative are transformed into 1 and -1, and 0 for no opinion.
+
 ```{r}
-str(data)
-
 hist(data$employee_length, breaks = 10)
+table(data$employee_length)
 ```
-
-## Cox Model
 
 ```{r}
 surv_obj <- Surv(time = data$employee_length, 
@@ -111,27 +88,32 @@ plot(survfit(surv_obj ~ 1), main = "Job Retention Ratio by Employee Length", yli
 
 ```
 
-This plot illustrates how likely employees are to stay in their position. For this dataset, more than half of the employees are likely to quit their job within 3 years, and the porportion of long-term staff is less than 10%.
+# Quit-Risk Analysis
 
-### Model 1: whole dataset
+## Baseline Model
 ```{r}
 coxmodel1 <- coxph(surv_obj ~ ., data[,features_base])
 summary(coxmodel1)
 
-ggforest(coxmodel1, data = data, main = "Hazard Ratio")
+ggforest(coxmodel1, data = data, main = "Hazard Ratio for all Employee")
+
 
 ```
 
-The Cox Model is built to find factors employees quit the job. The Concordance index is 0.592, thus the model is not bad.
 
-The career_missing are the most significant factor shown in the model, indicating when employee doesn't rate their career opportunity are more likely to quit the job.
+The Cox Model is built to find risk factors that may affect employees' choice of whether quit their job. The Concordance index is 0.58, thus the model is not bad.
 
-Note: ```rating_culture_values``` is dropped since high correlation with ```rating_senior_leadership```, which made VIF > 3. After dropping ```rating_culture_values```, the C-Index wasn't decreased too much. 
+The covid_related and career_missing are the most significant factor shown in the model, indicating that employee are less likely to quit during the covid time (may: find a new job, working remotely), and people who quit the job are not willing to comment the career opportunity.
 
-Covid is a protector of employee leaving, during the covid period people are less likely to quit their job.
+We also find that compensation and benefits is an important factor, as higher compensation and benefits will decrease the willing of employee to quit the job.
+
+Note: ```rating_culture_values``` and ```rating_senior_leadership``` are moved since VIF > 3. 
 
 
-<!-- Senior leadership and the that people may have higher expection of their boss and  -->
+## Tenure-based Group Analysis
+
+Tenure of more than half of the employees is less than 3 years, and potential heterogeneity may exist between different groups. To figure out if there's a difference between different employees, we divided them into some groups: 0-3 years, 3-5 years, and 5+ years.
+
 ### Model 2: subset with year < 3
 
 ```{r}
@@ -145,6 +127,8 @@ summary(coxmodel2)
 ggforest(coxmodel2, data = data2, main = "Hazard Ratio for Employee Length < 3yr")
 
 ```
+
+
 
 ### Model 3: subset with year 3~5
 
@@ -161,11 +145,6 @@ ggforest(coxmodel3, data = data3, main = "Hazard Ratio for Employee Length 3 ~ 5
 ```
 
 
-The initial observation that higher leadership ratings act as a risk factor is a paradox that dissolves when examining mid-tenure staff. During the 3–5 year window, the influence of leadership quality completely neutralizes (HR = 1.01, p=0.81). This suggests a clear maturation effect among employees. By their third year, staff have matured past the stage where subjective leadership styles dictate their retention.
-
-Instead, the model is entirely dominated by the absence of career opportunities (Career Missing, HR=1.35). This demonstrates that for experienced professionals, attrition is no longer about dissatisfaction with management, but rather a pragmatic response to a stagnant career trajectory. If the company fails to provide clear promotion pathways within this 3–5 year window, even the most highly-rated leaders cannot prevent turnover.
-
-
 ### Model 4: subset with year 5+
 
 ```{r}
@@ -180,47 +159,80 @@ ggforest(coxmodel4, data = data4, main = "Hazard Ratio for Employee Length 5yr+"
 
 ```
 
-Those people who work more than 5 years are more sensitive to career opportunity, otherwise they tend to quit job.
+We can conclude from the C-Index that it’s more random for being employed less than 3 years (C-Index 0.571); the result is most stable for employee who works 3-5 years (C-Index 0.917); there might be more extraneous factors (i.e., family) that affect the job stability, which is not collected in the dataset (C-Index 0.632).
+
+CEO approval decreases the willingness of employee from quitting job for people who start to work as new staff. However, as the longerthe employee's length increased, the approval of the CEO became a negative factor. There’s also a trend that the willingness to recommend friends becomes a significant factor in job quitting.
+
+COVID affects all employees, but it’s less sensitive to those who have been working longer than 5 years (p-value: 0.252). 
 
 
-### Model 5: Starting Before 2020
 
-```{r}
-data5 <- data[(data$employee_job_start_year < 2020),]
-surv_obj5 <- Surv(time = data5$employee_length,
-              event = data5$employee_job_quit)
+## COVID-Related Analysis
 
-coxmodel5 <- coxph(surv_obj5 ~ ., data5[, features_base])
-summary(coxmodel5)
-
-ggforest(coxmodel5, data = data5, main = "Hazard Ratio for Employee Starting Before 2020")
-
-```
-
-Those people who work more than 5 years are more sensitive to career opportunity, otherwise they tend to quit job.
+The year 2020 marks a statistical watershed in the retention logic. We divided the dataset according to pre and post-COVID. The pre-2020 model failed to achieve significance (p-value 0.56, C-Index 0.55). , suggesting that turnover was largely erratic, and other factors may influence the choices of an employee. 
 
 
-### Model 5: Starting Before 2020
+### Model 5: Quit Before Covid (Baseline)
 
 ```{r}
-data5 <- data[(data$employee_job_start_year < 2020),]
+data5 <- data[(data$employee_job_end_year < 2020),] %>%
+  subset(select = -covid_related_review)
 surv_obj5 <- Surv(time = data5$employee_length, 
               event = data5$employee_job_quit)
 
-coxmodel5 <- coxph(surv_obj5 ~ ., data5[, features_base])
+coxmodel5 <- coxph(surv_obj5 ~ ., data5[, setdiff(features_base, c('covid_related_review'))])
 summary(coxmodel5)
 
-ggforest(coxmodel5, data = data5, main = "Hazard Ratio for Employee Starting Before 2020")
+ggforest(coxmodel5, data = data5, main = "Hazard Ratio for Employee Quit Before COVID")
 
 ```
 
+
+
+### Model 6: Starting After Covid
+
 ```{r}
-data6 <- data[(data$employee_job_end_year > 2019),]
-surv_obj6 <- Surv(time = data6$employee_length, event = data6$employee_job_quit)
+data6 <- data[(data$employee_job_start_year > 2019),]
+surv_obj6 <- Surv(time = data6$employee_length,
+              event = data6$employee_job_quit)
 
 coxmodel6 <- coxph(surv_obj6 ~ ., data6[, features_base])
 summary(coxmodel6)
 
-ggforest(coxmodel6, data = data6, main = "Hazard Ratio for Employee Quit After 2020")
+ggforest(coxmodel6, data = data6, main = "Hazard Ratio for Employee Start Before COVID")
 
 ```
+
+
+
+
+### Model 7: Quit After Covid
+
+```{r}
+data7 <- data[(data$employee_job_end_year > 2019),]
+surv_obj7 <- Surv(time = data7$employee_length, event = data7$employee_job_quit)
+
+coxmodel7 <- coxph(surv_obj7 ~ ., data7[, features_base])
+summary(coxmodel7)
+
+ggforest(coxmodel7, data = data7, main = "Hazard Ratio for Employee Quit After COVID")
+
+```
+
+In contrast, post-2020 models (start before COVID, end after COVID) are more significant (p-value = 0.07, 0.02), where Compensation emerges as a critical determinant to decrease the risk of leaving.
+
+Intriguingly, the impact of COVID is bifurcated: while it serves as a stabilizer for established staff, it functions as an attrition catalyst (HR=1.62) for post-2019 joiners.
+However, employees who started before 2020 are more likely to quit their jobs due to the impact of COVID, although they are still in favour of better working conditions like compensation benefits, business outlook, and CEO approval. (Concordance= 0.66)
+
+
+
+
+## Springboard Effect
+
+The springboard effect was found in multiple groups that, although some factors indicating better working conditions were favored, like compensation benefits, business outlook, and CEO approval, they are more likely to quit their job for a better opportunity. It could not be statistically significant since it is not a direct process.
+
+We first see this in the overall employee, which indicates that the springboard effect is a general phenomenon among employees, though it’s not significant statistically. In that case, the better business outlook, empowering the growth and a better mindset, increases the risk of attrition.
+
+This also comes after COVID. Compensation and benefits are considered the most important factors, so employees are more likely to look for a better position, though their current position provides career opportunities.
+
+
