@@ -77,15 +77,18 @@ This figure (a) shows the distribution of tenure (employee length) in the curren
 In this question, some categorical variables are translated into numerical values. For a binary response, positive and negative are dealt with 1 and 0; for a triplenary response, positive and negative are transformed into 1 and -1, and 0 for no opinion.
 
 ```{r}
+pdf("employee.length.pdf", 5,4)
 hist(data$employee_length, breaks = 10)
+dev.off()
 table(data$employee_length)
 ```
 
 ```{r}
 surv_obj <- Surv(time = data$employee_length, 
               event = data$employee_job_quit)
+pdf("employee.surv.pdf", 5,4)
 plot(survfit(surv_obj ~ 1), main = "Job Retention Ratio by Employee Length", ylim = c(0,1))
-
+dev.off()
 ```
 
 # Quit-Risk Analysis
@@ -95,8 +98,9 @@ plot(survfit(surv_obj ~ 1), main = "Job Retention Ratio by Employee Length", yli
 coxmodel1 <- coxph(surv_obj ~ ., data[,features_base])
 summary(coxmodel1)
 
-ggforest(coxmodel1, data = data, main = "Hazard Ratio for all Employee")
 
+ggforest(coxmodel1, data = data, main = "Hazard Ratio for all Employee")
+ggsave("q1.1.pdf", width = 10, height = 4.5)
 
 ```
 
@@ -125,6 +129,7 @@ coxmodel2 <- coxph(surv_obj2 ~ ., data2[, features_base])
 summary(coxmodel2)
 
 ggforest(coxmodel2, data = data2, main = "Hazard Ratio for Employee Length < 3yr")
+ggsave("q1.2.pdf", width = 10, height = 4.5)
 
 ```
 
@@ -141,6 +146,7 @@ coxmodel3 <- coxph(surv_obj3 ~ ., data3[, features_base])
 summary(coxmodel3)
 
 ggforest(coxmodel3, data = data3, main = "Hazard Ratio for Employee Length 3 ~ 5yr")
+ggsave("q1.3.pdf", width = 10, height = 4.5)
 
 ```
 
@@ -156,6 +162,7 @@ coxmodel4 <- coxph(surv_obj4 ~ ., data4[, features_base])
 summary(coxmodel4)
 
 ggforest(coxmodel4, data = data4, main = "Hazard Ratio for Employee Length 5yr+")
+ggsave("q1.4.pdf", width = 10, height = 4.5)
 
 ```
 
@@ -184,6 +191,7 @@ coxmodel5 <- coxph(surv_obj5 ~ ., data5[, setdiff(features_base, c('covid_relate
 summary(coxmodel5)
 
 ggforest(coxmodel5, data = data5, main = "Hazard Ratio for Employee Quit Before COVID")
+ggsave("q1.5.pdf", width = 10, height = 4.5)
 
 ```
 
@@ -199,9 +207,11 @@ surv_obj6 <- Surv(time = data6$employee_length,
 coxmodel6 <- coxph(surv_obj6 ~ ., data6[, features_base])
 summary(coxmodel6)
 
-ggforest(coxmodel6, data = data6, main = "Hazard Ratio for Employee Start Before COVID")
+ggforest(coxmodel6, data = data6, main = "Hazard Ratio for Employee Start After COVID")
+ggsave("q1.6.pdf", width = 10, height = 4.5)
 
 ```
+
 
 
 
@@ -216,6 +226,7 @@ coxmodel7 <- coxph(surv_obj7 ~ ., data7[, features_base])
 summary(coxmodel7)
 
 ggforest(coxmodel7, data = data7, main = "Hazard Ratio for Employee Quit After COVID")
+ggsave("q1.7.pdf", width = 10, height = 4.5)
 
 ```
 
